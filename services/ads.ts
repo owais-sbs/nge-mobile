@@ -1,11 +1,12 @@
-import axiosInstance from '@/src/api/axiosInstance';
 import { ApiResponse } from '@/services/auth';
+import axiosInstance from '@/src/api/axiosInstance';
 
 export interface AdDto {
   Id: number;
   Title: string;
   Description?: string;
   ImageUrl?: string;
+  ImageUrl1?: string; // Added for horizontal slider images
   CreatedOn?: string;
   IsActive?: boolean;
 }

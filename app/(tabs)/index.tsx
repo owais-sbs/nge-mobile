@@ -132,9 +132,9 @@ const HomeScreen = (): React.JSX.Element => {
 
   // Get the first 4 ads for the slider
   const sliderAds = ads.slice(0, 4);
-  const hasAds = sliderAds.length > 0 && sliderAds.some(ad => ad.ImageUrl);
+  const hasAds = sliderAds.length > 0 && sliderAds.some(ad => ad.ImageUrl1);
   const imageCount = hasAds 
-    ? sliderAds.filter(ad => ad.ImageUrl).length 
+    ? sliderAds.filter(ad => ad.ImageUrl1).length 
     : FALLBACK_HERO_IMAGES.length;
 
   const handlePrevImage = () => {
@@ -617,9 +617,9 @@ useFocusEffect(
                 activeOpacity={0.9}
                 style={styles.heroImageTouchable}
               >
-                {hasAds && sliderAds[currentImageIndex]?.ImageUrl ? (
+                {hasAds && sliderAds[currentImageIndex]?.ImageUrl1 ? (
                   <Image 
-                    source={{ uri: sliderAds[currentImageIndex].ImageUrl! }} 
+                    source={{ uri: sliderAds[currentImageIndex].ImageUrl1! }} 
                     style={styles.heroImage}
                     resizeMode="cover"
                   />
