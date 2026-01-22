@@ -1207,7 +1207,7 @@ const styles = StyleSheet.create({
   heroImageTouchable: {
     width: SCREEN_WIDTH - 32, // Reduced margins for better visual impact
     maxWidth: '100%',
-    height: 200, // Increased height for better visual impact
+    minHeight: 180, // Minimum height to ensure good visibility
     borderRadius: 20, // Increased border radius
     overflow: 'hidden',
     alignSelf: 'center',
@@ -1221,7 +1221,9 @@ const styles = StyleSheet.create({
   },
   heroImage: {
     width: '100%',
-    height: '100%',
+    height: undefined, // Let height be determined by aspect ratio
+    aspectRatio: 16 / 9, // Standard aspect ratio for horizontal images
+    minHeight: 180,
   },
   heroOverlay: {
     position: 'absolute',
