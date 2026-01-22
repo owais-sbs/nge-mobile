@@ -1,20 +1,20 @@
-import { hasAdminRole } from '@/src/services/authRoles';
-import { storage, UserData } from '@/src/lib/storage';
 import { AdDto, fetchAds } from '@/services/ads';
 import { getAllPostCategories, PostCategoryDto } from '@/services/postCategory';
 import {
-  addLike,
-  addOrUpdateComment,
-  CommentDto,
-  deleteComment,
-  deletePost,
-  fetchPosts,
-  getComments,
-  getPostsByCategoryId,
-  PostDto,
-  removeLike,
-  toggleSavePost,
+    addLike,
+    addOrUpdateComment,
+    CommentDto,
+    deleteComment,
+    deletePost,
+    fetchPosts,
+    getComments,
+    getPostsByCategoryId,
+    PostDto,
+    removeLike,
+    toggleSavePost,
 } from '@/services/posts';
+import { storage, UserData } from '@/src/lib/storage';
+import { hasAdminRole } from '@/src/services/authRoles';
 
 import { fetchNotifications } from '@/services/notification';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
@@ -24,21 +24,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator, Alert,
+    Dimensions,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const SF_PRO_TEXT_REGULAR = Platform.select({
@@ -630,14 +630,33 @@ useFocusEffect(
                     resizeMode="cover"
                   />
                 )}
+                
+                {/* Gradient overlay for better text visibility */}
+                <View style={styles.heroOverlay} />
+                
+                {/* Slide indicators */}
+                {imageCount > 1 && (
+                  <View style={styles.slideIndicators}>
+                    {Array.from({ length: imageCount }).map((_, index) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.slideIndicator,
+                          index === currentImageIndex && styles.slideIndicatorActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                )}
               </TouchableOpacity>
+              
               {imageCount > 1 && (
                 <>
                   <TouchableOpacity style={[styles.heroArrow, styles.heroArrowLeft]} onPress={handlePrevImage}>
-                    <Feather name="chevron-left" size={24} color="white" />
+                    <Feather name="chevron-left" size={20} color="white" />
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.heroArrow, styles.heroArrowRight]} onPress={handleNextImage}>
-                    <Feather name="chevron-right" size={24} color="white" />
+                    <Feather name="chevron-right" size={20} color="white" />
                   </TouchableOpacity>
                 </>
               )}
@@ -1180,47 +1199,93 @@ const styles = StyleSheet.create({
     color: '#1B1B1B',
   },
   heroContainer: {
-    marginTop: 10,
+    marginTop: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   heroImageTouchable: {
-    width: SCREEN_WIDTH - 40, // Full width with small margins (20px on each side)
+    width: SCREEN_WIDTH - 32, // Reduced margins for better visual impact
     maxWidth: '100%',
-    height: 163,
-    borderRadius: 15,
+    height: 200, // Increased height for better visual impact
+    borderRadius: 20, // Increased border radius
     overflow: 'hidden',
     alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   heroImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 15,
+  },
+  heroOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '40%',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  slideIndicators: {
+    position: 'absolute',
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  slideIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  slideIndicatorActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 20,
   },
   heroArrow: {
     position: 'absolute',
     top: '50%',
-    marginTop: -12, // Half of icon size
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 15,
-    padding: 2,
+    marginTop: -18, // Adjusted for new icon size
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 18,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   heroArrowLeft: {
-    left: 15,
+    left: 20,
   },
   heroArrowRight: {
-    right: 15,
+    right: 20,
   },
   promoButton: {
     backgroundColor: '#34A853',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 18,
+    borderRadius: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     alignSelf: 'center',
-    marginTop: 15,
-    marginBottom: 10, // Add space below
+    marginTop: 16,
+    marginBottom: 8,
+    shadowColor: '#34A853',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   promoText: {
     color: 'white',
@@ -1233,8 +1298,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     padding: 20,
-    marginTop: -20, // Overlap effect
+    marginTop: -15, // Better overlap effect
     flex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   trendingTitle: {
     fontSize: 18,

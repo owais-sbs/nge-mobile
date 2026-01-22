@@ -1,10 +1,9 @@
-import { PostDto, searchPosts } from '@/services/posts';
+import { ChatSearchResult, searchChatMatches } from '@/services/chat';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -14,7 +13,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { searchChatMatches, ChatSearchResult } from '@/services/chat';
 
 
 const SearchScreen = () => {
@@ -129,7 +127,7 @@ const loadMore = async () => {
           <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={28} color="black" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Archive Search</Text>
+          <Text style={styles.headerTitle}>WhatsApp Archive Search</Text>
         </View>
 
         <View style={styles.searchBarContainer}>

@@ -1,7 +1,7 @@
 // axiosInstance.js
 
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "../lib/storage";
 
 const axiosInstance = axios.create({
  baseURL: 'https://nge.nuzum.tech/api/'
@@ -15,7 +15,7 @@ const axiosInstance = axios.create({
 // Request interceptor to attach token to the headers
 axiosInstance.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync("authToken"); // Get the token from SecureStore
+    const token = await storage.getToken(); // Get the token from AsyncStorage
     if (token) {
       // Attach the token to the Authorization header
       config.headers["Authorization"] = `Bearer ${token}`;

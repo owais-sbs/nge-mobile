@@ -3,18 +3,18 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ImageSourcePropType,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ImageSourcePropType,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 type AdItem = {
@@ -28,9 +28,8 @@ type MasonryAd = AdItem & { height: number; width: number };
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const COLUMN_COUNT = 2;
-const CARD_GAP = 10;
-const GRID_HORIZONTAL_PADDING = 12;
-const MORE_ICON = require('@/assets/images/more.png');
+const CARD_GAP = 8; // Moderate gap between cards
+const GRID_HORIZONTAL_PADDING = 16; // Better padding for margins
 
 const AdsRewardsScreen = (): React.JSX.Element => {
   const [ads, setAds] = useState<AdDto[]>([]);
@@ -176,7 +175,7 @@ const AdsRewardsScreen = (): React.JSX.Element => {
           </View>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.grid, { paddingBottom: 12 }]}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.grid}>
           {error ? (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{error}</Text>
@@ -199,31 +198,25 @@ const AdsRewardsScreen = (): React.JSX.Element => {
               ]}
             >
               {column.map((item, itemIndex) => (
-                <React.Fragment key={item.id}>
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    style={[styles.card, { height: item.height }]}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/ads-detail',
-                        params: {
-                          id: item.id,
-                          title: item.title,
-                          description:
-                            ads.find((a) => String(a.Id) === item.id)?.Description ?? '',
-                          imageUrl:
-                            ads.find((a) => String(a.Id) === item.id)?.ImageUrl ?? '',
-                        },
-                      })
-                    }>
-                    <Image source={item.image} resizeMode="cover" style={styles.cardImage} />
-                  </TouchableOpacity>
-                  {itemIndex < column.length - 1 && (
-                    <View style={styles.dividerWrapper}>
-                      <Image source={MORE_ICON} style={styles.dividerIcon} resizeMode="contain" />
-                    </View>
-                  )}
-                </React.Fragment>
+                <TouchableOpacity
+                  key={item.id}
+                  activeOpacity={0.9}
+                  style={[styles.card, { height: item.height }]}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/ads-detail',
+                      params: {
+                        id: item.id,
+                        title: item.title,
+                        description:
+                          ads.find((a) => String(a.Id) === item.id)?.Description ?? '',
+                        imageUrl:
+                          ads.find((a) => String(a.Id) === item.id)?.ImageUrl ?? '',
+                      },
+                    })
+                  }>
+                  <Image source={item.image} resizeMode="cover" style={styles.cardImage} />
+                </TouchableOpacity>
               ))}
             </View>
           ))}
@@ -251,90 +244,118 @@ const AdsRewardsScreen = (): React.JSX.Element => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
-  container: { flex: 1 },
-  headerWrapper: { paddingHorizontal: 14 },
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: '#FFFFFF' 
+  },
+  container: { 
+    flex: 1 
+  },
+  headerWrapper: { 
+    paddingHorizontal: 18, // Balanced padding
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'android' ? 10 : 0,
-    paddingBottom: 12,
+    paddingTop: Platform.OS === 'android' ? 14 : 4, // Balanced padding
+    paddingBottom: 14, // Balanced padding
   },
-  backButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 20, fontWeight: '600', color: '#1B1B1B' },
-  headerSpacer: { width: 44, height: 44 },
+  backButton: { 
+    width: 44, 
+    height: 44, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderRadius: 22,
+    backgroundColor: '#F8F9FA',
+  },
+  headerTitle: { 
+    flex: 1, 
+    textAlign: 'center', 
+    fontSize: 22, 
+    fontWeight: '700', 
+    color: '#1B1B1B',
+    letterSpacing: 0.5,
+  },
+  headerSpacer: { 
+    width: 44, 
+    height: 44 
+  },
 
   grid: {
     flexDirection: 'row',
     paddingHorizontal: GRID_HORIZONTAL_PADDING,
-    paddingVertical: 0,
-    margin: 0,
+    paddingTop: 12, // Moderate top padding
+    paddingBottom: 20,
   },
   column: {
     flexDirection: 'column',
-    padding: 0,
-    margin: 0,
   },
   card: {
-    borderRadius: 20,
+    borderRadius: 14, // Balanced border radius
     overflow: 'hidden',
-    marginBottom: CARD_GAP,
+    marginBottom: 6, // Moderate bottom margin
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+    backgroundColor: '#FFFFFF',
   },
   cardImage: {
     width: '100%',
     height: '100%',
   },
-  dividerWrapper: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-  },
-  dividerIcon: {
-    width: 18,
-    height: 18,
-  },
   errorContainer: {
     width: '100%',
-    paddingVertical: 16,
+    paddingVertical: 20,
     alignItems: 'center',
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
   },
   errorText: {
-    color: '#D9534F',
+    color: '#E53E3E',
     fontFamily: 'Inter_500Medium',
     fontSize: 14,
+    textAlign: 'center',
   },
   initialLoader: {
-    marginVertical: 16,
+    marginVertical: 40,
   },
   emptyStateText: {
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: 40,
     color: '#6F6F6F',
     fontFamily: 'Inter_500Medium',
+    fontSize: 16,
   },
   loadMoreButton: {
-    marginVertical: 16,
+    marginVertical: 20,
     alignSelf: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F5B400',
-    backgroundColor: '#FFFBEA',
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 25,
+    backgroundColor: '#F5B400',
+    shadowColor: '#F5B400',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   loadMoreText: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-    color: '#8A6A00',
-  },
-  endOfListText: {
-    textAlign: 'center',
-    marginVertical: 12,
-    color: '#6F6F6F',
-    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 
