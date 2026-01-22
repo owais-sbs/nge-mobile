@@ -66,7 +66,7 @@ const renderHighlightedText = (text: string, keyword: string) => {
 
   try {
     setLoading(true);
-    const data = await searchChatMatches(keyword, 0, 10);
+    const data = await searchChatMatches(keyword, 0, 5);
     setResults(data);
     setSkip(data.length);
     setHasMore(data.length === 10);
