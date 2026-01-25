@@ -26,13 +26,8 @@ const SF_PRO_TEXT_REGULAR = Platform.select({
 });
 
 const isImageUrl = (url: string): boolean => {
-  const lowerUrl = url.toLowerCase();
-  // Exclude ad_documents and doc_documents paths - these are documents, not images
-  if (lowerUrl.includes('ad_documents/') || lowerUrl.includes('doc_documents/')) {
-    return false;
-  }
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-  return imageExtensions.some((ext) => lowerUrl.includes(ext));
+  return imageExtensions.some((ext) => url.toLowerCase().includes(ext));
 };
 
 const isVideoUrl = (url: string): boolean => {
@@ -59,10 +54,6 @@ const isAudioUrl = (url: string): boolean => {
   return audioExtensions.some((ext) => url.toLowerCase().includes(ext));
 };
 
-const isAdDocumentUrl = (url: string): boolean => {
-  return url.toLowerCase().includes('ad_documents/');
-};
-
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 const extractUrls = (text: string): string[] => {
@@ -72,14 +63,8 @@ const extractUrls = (text: string): string[] => {
 const getDocumentNameFromUrl = (url: string): string => {
   try {
     const lower = url.toLowerCase();
-    // Check for both doc_documents and ad_documents
-    let marker = 'doc_documents/';
+    const marker = 'doc_documents/';
     let startIndex = lower.indexOf(marker);
-    
-    if (startIndex === -1) {
-      marker = 'ad_documents/';
-      startIndex = lower.indexOf(marker);
-    }
 
     let namePart = url;
     if (startIndex !== -1) {
@@ -180,25 +165,6 @@ const ChatDetailScreen = () => {
         );
 
     const renderUrlBlock = (url: string, key: number) => {
-      // Check for ad_documents first - treat as document, not image
-      if (isAdDocumentUrl(url)) {
-        const docName = getDocumentNameFromUrl(url);
-        return (
-          <TouchableOpacity
-            key={key}
-            style={styles.mediaContainer}
-            onPress={() => Linking.openURL(url)}
-          >
-            <View style={styles.documentContainer}>
-              <Feather name="file-image" size={32} color="#F5B400" />
-              <Text style={styles.mediaLabel}>{docName || 'Ad Document'}</Text>
-              <Text style={styles.mediaUrl} numberOfLines={1}>
-                {url}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      }
       if (isImageUrl(url)) {
         return (
           <TouchableOpacity
