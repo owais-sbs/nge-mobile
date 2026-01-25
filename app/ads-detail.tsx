@@ -2,11 +2,15 @@ import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import {
+  Alert,
+  Clipboard,
   Image,
+  Linking,
   Modal,
   Platform,
   SafeAreaView,
   ScrollView,
+  Share,
   StatusBar,
   StyleSheet,
   Text,
@@ -26,6 +30,7 @@ const AdsDetailScreen = (): React.JSX.Element => {
   }>();
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -42,6 +47,68 @@ const AdsDetailScreen = (): React.JSX.Element => {
     ? { uri: params.imageUrl }
     : require('@/assets/images/ads2.png');
 
+  // Generate deep link for the ad (for app-to-app navigation)
+  const generateDeepLink = () => {
+    if (!adId) return '';
+    // Deep link format: ngemobilefinal://ads-detail?id=123
+    return `ngemobilefinal://ads-detail?id=${adId}&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&imageUrl=${encodeURIComponent(params.imageUrl || '')}`;
+  };
+
+  // Generate clickable web URL (primary share link)
+  // This will be clickable in WhatsApp and other messaging apps
+  // When web page is set up, it will redirect to app if installed, or show download options
+  const generateWebLink = () => {
+    if (!adId) return '';
+    // HTTPS URL that's clickable everywhere
+    // Include all parameters so web page can extract them for deep linking
+    const urlParams = new URLSearchParams({
+      id: adId.toString(),
+      title: title,
+      description: description,
+      imageUrl: params.imageUrl || '',
+    });
+    // Replace with your actual domain when app goes live
+    return `https://ngemobilefinal.app/ads/${adId}?${urlParams.toString()}`;
+  };
+
+  // Generate share link - use clickable HTTPS URL
+  const generateShareLink = () => {
+    const webLink = generateWebLink();
+    // Clean, clickable URL with message
+    return `${title}\n\n${webLink}\n\nDownload the app to view: ${Platform.OS === 'ios' ? 'https://apps.apple.com/app/ngemobilefinal' : 'https://play.google.com/store/apps/details?id=com.onepath.nge_mobile_final'}`;
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      const shareLink = generateShareLink();
+      await Clipboard.setString(shareLink);
+      setShowShareModal(false);
+      Alert.alert('Success', 'Link copied to clipboard!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to copy link');
+    }
+  };
+
+  const handleShareNative = async () => {
+    try {
+      const shareText = generateShareLink();
+      const shareOptions = Platform.select({
+        ios: {
+          message: shareText,
+        },
+        android: {
+          message: shareText,
+          title: title,
+        },
+      });
+      
+      await Share.share(shareOptions || { message: shareText });
+      setShowShareModal(false);
+    } catch (error) {
+      Alert.alert('Error', 'Unable to share');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -52,20 +119,29 @@ const AdsDetailScreen = (): React.JSX.Element => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{title}</Text>
         <View style={styles.headerSpacer}>
-          {isAdmin && adId !== null ? (
+          <View style={styles.headerActions}>
             <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={async () => {
-                try {
-                  await deleteAd(adId);
-                  router.back();
-                } catch (err) {
-                  console.error('Failed to delete ad', err);
-                }
-              }}>
-              <Feather name="trash-2" size={18} color="#D9534F" />
+              style={styles.shareButton}
+              onPress={() => setShowShareModal(true)}
+              activeOpacity={0.7}
+            >
+              <Feather name="share-2" size={20} color="#1B1B1B" />
             </TouchableOpacity>
-          ) : null}
+            {isAdmin && adId !== null ? (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={async () => {
+                  try {
+                    await deleteAd(adId);
+                    router.back();
+                  } catch (err) {
+                    console.error('Failed to delete ad', err);
+                  }
+                }}>
+                <Feather name="trash-2" size={18} color="#D9534F" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       </View>
 
@@ -152,6 +228,59 @@ const AdsDetailScreen = (): React.JSX.Element => {
           </View>
         </View>
       </Modal>
+
+      {/* Share Modal */}
+      <Modal
+        visible={showShareModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <View style={styles.shareModalOverlay}>
+          <TouchableOpacity
+            style={styles.shareModalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowShareModal(false)}
+          />
+          <View style={styles.shareModalContent}>
+            <View style={styles.shareModalHeader}>
+              <Text style={styles.shareModalTitle}>Share Ad</Text>
+              <TouchableOpacity
+                onPress={() => setShowShareModal(false)}
+                style={styles.shareModalClose}
+              >
+                <Feather name="x" size={24} color="#1B1B1B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.shareOptionsContainer}>
+              <TouchableOpacity
+                style={styles.shareOption}
+                onPress={handleCopyLink}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: '#E3F2FD' }]}>
+                  <Feather name="link" size={24} color="#1976D2" />
+                </View>
+                <Text style={styles.shareOptionText}>Copy Link</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shareOption}
+                onPress={handleShareNative}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.shareOptionIcon, { backgroundColor: '#FFF3E0' }]}>
+                  <Feather name="share-2" size={24} color="#FF9800" />
+                </View>
+                <Text style={styles.shareOptionText}>
+                  {Platform.OS === 'ios' ? 'Share' : 'Share'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -187,6 +316,15 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'flex-end',
     justifyContent: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shareButton: {
+    padding: 8,
+    marginRight: 4,
   },
   scrollView: {
     flex: 1,
@@ -335,6 +473,61 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 4,
+  },
+  shareModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  shareModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  shareModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    paddingHorizontal: 20,
+    maxHeight: '80%',
+  },
+  shareModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  shareModalTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#1B1B1B',
+  },
+  shareModalClose: {
+    padding: 4,
+  },
+  shareOptionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+  },
+  shareOption: {
+    width: '45%',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  shareOptionIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  shareOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: '#1B1B1B',
+    textAlign: 'center',
   },
 });
 

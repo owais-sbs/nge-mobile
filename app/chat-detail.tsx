@@ -4,8 +4,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   StatusBar,
@@ -24,8 +26,13 @@ const SF_PRO_TEXT_REGULAR = Platform.select({
 });
 
 const isImageUrl = (url: string): boolean => {
+  const lowerUrl = url.toLowerCase();
+  // Exclude ad_documents and doc_documents paths - these are documents, not images
+  if (lowerUrl.includes('ad_documents/') || lowerUrl.includes('doc_documents/')) {
+    return false;
+  }
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-  return imageExtensions.some((ext) => url.toLowerCase().includes(ext));
+  return imageExtensions.some((ext) => lowerUrl.includes(ext));
 };
 
 const isVideoUrl = (url: string): boolean => {
@@ -52,6 +59,10 @@ const isAudioUrl = (url: string): boolean => {
   return audioExtensions.some((ext) => url.toLowerCase().includes(ext));
 };
 
+const isAdDocumentUrl = (url: string): boolean => {
+  return url.toLowerCase().includes('ad_documents/');
+};
+
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 const extractUrls = (text: string): string[] => {
@@ -61,8 +72,14 @@ const extractUrls = (text: string): string[] => {
 const getDocumentNameFromUrl = (url: string): string => {
   try {
     const lower = url.toLowerCase();
-    const marker = 'doc_documents/';
+    // Check for both doc_documents and ad_documents
+    let marker = 'doc_documents/';
     let startIndex = lower.indexOf(marker);
+    
+    if (startIndex === -1) {
+      marker = 'ad_documents/';
+      startIndex = lower.indexOf(marker);
+    }
 
     let namePart = url;
     if (startIndex !== -1) {
@@ -90,7 +107,9 @@ const ChatDetailScreen = () => {
   const [context, setContext] = useState<ChatContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const highlightKeyword = params.keyword?.trim() || ''
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 
   const renderHighlightedText = (text: string, keyword: string) => {
@@ -161,16 +180,40 @@ const ChatDetailScreen = () => {
         );
 
     const renderUrlBlock = (url: string, key: number) => {
+      // Check for ad_documents first - treat as document, not image
+      if (isAdDocumentUrl(url)) {
+        const docName = getDocumentNameFromUrl(url);
+        return (
+          <TouchableOpacity
+            key={key}
+            style={styles.mediaContainer}
+            onPress={() => Linking.openURL(url)}
+          >
+            <View style={styles.documentContainer}>
+              <Feather name="file-image" size={32} color="#F5B400" />
+              <Text style={styles.mediaLabel}>{docName || 'Ad Document'}</Text>
+              <Text style={styles.mediaUrl} numberOfLines={1}>
+                {url}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }
       if (isImageUrl(url)) {
         return (
-          <View key={key} style={styles.mediaContainer}>
+          <TouchableOpacity
+            key={key}
+            style={styles.mediaContainer}
+            onPress={() => setFullScreenImage(url)}
+            activeOpacity={0.9}
+          >
             <ExpoImage
               source={{ uri: url }}
               style={styles.mediaImage}
               contentFit="contain"
               transition={200}
             />
-          </View>
+          </TouchableOpacity>
         );
       }
       if (isVideoUrl(url)) {
@@ -353,6 +396,43 @@ const ChatDetailScreen = () => {
 
         {context.snippet.map((message, index) => renderMessage(message, index))}
       </ScrollView>
+
+      {/* Full Screen Image Modal */}
+      <Modal
+        visible={fullScreenImage !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFullScreenImage(null)}
+      >
+        <View style={styles.fullScreenContainer}>
+          <TouchableOpacity
+            style={[
+              styles.fullScreenCloseButton,
+              { top: Platform.OS === 'ios' ? insets.top + 10 : 50 }
+            ]}
+            onPress={() => setFullScreenImage(null)}
+            activeOpacity={0.7}
+          >
+            <Feather name="x" size={28} color="#FFF" />
+          </TouchableOpacity>
+          {fullScreenImage && (
+            <ScrollView
+              contentContainerStyle={styles.fullScreenScrollContent}
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+            >
+              <ExpoImage
+                source={{ uri: fullScreenImage }}
+                style={[styles.fullScreenImage, { width: screenWidth, height: screenHeight }]}
+                contentFit="contain"
+                transition={200}
+              />
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -510,6 +590,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
     textAlign: 'center',
+  },
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1000,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    padding: 8,
+  },
+  fullScreenScrollContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 
