@@ -1,5 +1,5 @@
 import { createAccount } from '@/services/auth';
-import { AntDesign, Feather } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -31,6 +31,7 @@ const SignUpScreen = (): React.JSX.Element => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const handlePickImage = async () => {
     try {
@@ -262,14 +263,27 @@ const SignUpScreen = (): React.JSX.Element => {
               value={mobile}
               onChangeText={setMobile}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#9C9C9C"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                placeholderTextColor="#9C9C9C"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+              >
+                <Feather 
+                  name={showPassword ? "eye-off" : "eye"} 
+                  size={20} 
+                  color="#9C9C9C" 
+                />
+              </TouchableOpacity>
+            </View>
 
             {accountType === 'engineer' ? (
               <TextInput
@@ -294,23 +308,6 @@ const SignUpScreen = (): React.JSX.Element => {
               ) : (
                 <Text style={styles.primaryButtonText}>Sign Up</Text>
               )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.dividerBlock}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerLabel}>Or</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <View style={styles.socialStack}>
-            <TouchableOpacity style={styles.socialButton} activeOpacity={0.85}>
-              <AntDesign name="google" size={20} color="#0F9D58" />
-              <Text style={styles.socialButtonText}>Sign in with Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialButton, styles.appleButton]} activeOpacity={0.85}>
-              <AntDesign name="apple" size={22} color="#FFFFFF" />
-              <Text style={[styles.socialButtonText, styles.appleButtonText]}>Sign in with Apple</Text>
             </TouchableOpacity>
           </View>
 
@@ -445,6 +442,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    paddingRight: 50, // Make room for eye icon
+    backgroundColor: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    color: '#1B1B1B',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 18,
+    top: 16,
+    padding: 4,
+  },
   errorText: {
     color: '#D9534F',
     fontSize: 13,
@@ -472,51 +495,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.35,
     color: '#0F1D3A',
   },
-  dividerBlock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 28,
-    columnGap: 12,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E3E3E3',
-  },
-  dividerLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#9C9C9C',
-  },
-  socialStack: {
-    gap: 14,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    columnGap: 12,
-    paddingVertical: 16,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: '#C9D3E6',
-    backgroundColor: '#FFFFFF',
-  },
-  socialButtonText: {
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#0F1D3A',
-  },
-  appleButton: {
-    backgroundColor: '#0F1D3A',
-    borderColor: '#0F1D3A',
-  },
-  appleButtonText: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
-  },
   footer: {
-    marginTop: 36,
+    marginTop: 'auto', // Push to bottom
+    paddingTop: 40,
     alignItems: 'center',
   },
   footerText: {

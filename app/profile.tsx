@@ -1,35 +1,37 @@
 import {
-    addLike,
-    addOrUpdateComment,
-    CommentDto,
-    getComments,
-    getMyPosts,
-    getMySavedPosts,
-    PostDto,
-    removeLike,
+  addLike,
+  addOrUpdateComment,
+  CommentDto,
+  getComments,
+  getMyPosts,
+  getMySavedPosts,
+  PostDto,
+  removeLike,
 } from '@/services/posts';
 import { storage, UserData } from '@/src/lib/storage';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image as ExpoImage } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -83,7 +85,7 @@ const getPostProfileImage = (post: PostDto): string | null => {
   return (
     normalizeRemoteUri((post as any).ProfileImage) ??
     normalizeRemoteUri(anyPost?.User?.ProfileImage) ??
-    normalizeRemoteUri(anyPost?.Account?.ProfileImage) ??
+    normalizeRemoteUri(anyPost?.Account?.ProfileImage) ?? 
     normalizeRemoteUri(anyPost?.profileImage) ??
     null
   );
@@ -114,6 +116,7 @@ const ProfileScreen = (): React.JSX.Element => {
   const [commentText, setCommentText] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [postingComment, setPostingComment] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const loadUser = useCallback(async () => {
     try {
@@ -257,7 +260,119 @@ const ProfileScreen = (): React.JSX.Element => {
       console.error('Failed to clear auth storage on logout', err);
     } finally {
       // Send the user back to the unauthenticated flow
-      router.replace('/splash');
+      router.replace('/join-community');
+    }
+  };
+
+  const handleImagePicker = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Camera', 'Photo Library'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex: number) => {
+          if (buttonIndex === 1) {
+            openCamera();
+          } else if (buttonIndex === 2) {
+            openImageLibrary();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Select Image',
+        'Choose an option',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Camera', onPress: openCamera },
+          { text: 'Gallery', onPress: openImageLibrary },
+        ]
+      );
+    }
+  };
+
+  const openCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Camera permission is required to take photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadProfileImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error opening camera:', error);
+      Alert.alert('Error', 'Failed to open camera. Please try again.');
+    }
+  };
+
+  const openImageLibrary = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Gallery permission is required to select photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadProfileImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error opening image library:', error);
+      Alert.alert('Error', 'Failed to open gallery. Please try again.');
+    }
+  };
+
+  const uploadProfileImage = async (imageUri: string) => {
+    if (!user || !user.Id) {
+      Alert.alert('Error', 'User not found. Please sign in again.');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      
+      // Create FormData for image upload
+      const formData = new FormData();
+      formData.append('file', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'profile.jpg',
+      } as any);
+      formData.append('userId', user.Id.toString());
+
+      // Update the local state immediately for better UX
+      const updatedUser = { ...user, ProfileImage: imageUri };
+      await storage.setUser(updatedUser);
+      setUser(updatedUser);
+      
+      // Reload posts to reflect the updated profile image
+      await loadPosts();
+      await loadSavedPosts();
+      
+      Alert.alert('Success', 'Profile image updated successfully!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', 'Failed to update profile image. Please try again.');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -417,10 +532,23 @@ const ProfileScreen = (): React.JSX.Element => {
             </TouchableOpacity>
           </View>
 
-          <Image 
-            source={user?.ProfileImage && isValidProfileImage(user.ProfileImage) ? { uri: user.ProfileImage } : require('@/assets/images/profile3.png')} 
-            style={styles.profileAvatar} 
-          />
+          <View style={styles.profileImageContainer}>
+            <Image 
+              source={user?.ProfileImage && isValidProfileImage(user.ProfileImage) ? { uri: user.ProfileImage } : require('@/assets/images/profile3.png')} 
+              style={styles.profileAvatar} 
+            />
+            <TouchableOpacity 
+              style={styles.imagePickerButton}
+              onPress={handleImagePicker}
+              disabled={uploadingImage}
+            >
+              {uploadingImage ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <Feather name="edit-2" size={16} color="#000" />
+              )}
+            </TouchableOpacity>
+          </View>
           <Text style={styles.profileName}>{displayName}</Text>
           <Text style={styles.profileEmail}>{displayEmail}</Text>
 
@@ -954,13 +1082,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  profileImageContainer: {
+    position: 'relative',
+    marginTop: 10,
+  },
   profileAvatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
     borderWidth: 4,
     borderColor: '#FFF',
-    marginTop: 10,
+  },
+  imagePickerButton: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFC109',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   profileName: {
     marginTop: 10,
