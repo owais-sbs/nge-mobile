@@ -1,5 +1,3 @@
-import { hasAdminRole } from '@/src/services/authRoles';
-import { storage, UserData } from '@/src/lib/storage';
 import {
     addLike,
     addOrUpdateComment,
@@ -11,6 +9,8 @@ import {
     PostDto,
     removeLike, toggleSavePost
 } from '@/services/posts';
+import { storage, UserData } from '@/src/lib/storage';
+import { hasAdminRole } from '@/src/services/authRoles';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { ResizeMode, Video } from 'expo-av';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -22,7 +22,6 @@ import {
     KeyboardAvoidingView,
     Modal,
     Platform,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -31,6 +30,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 

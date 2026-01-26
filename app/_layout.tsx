@@ -4,11 +4,12 @@ import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
-import 'react-native-reanimated';
 import { View } from 'react-native';
+import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { FloatingHelpCenter } from '@/components/FloatingHelpCenter';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { FloatingHelpCenter } from '@/components/FloatingHelpCenter'
 import { storage } from '@/src/lib/storage';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -64,32 +65,34 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <View style={{ flex: 1 }}>
-        <Stack initialRouteName="sign-in">
-          {/* <Stack.Screen name="splash" options={{ headerShown: false }} /> */}
-          <Stack.Screen name="join-community" options={{ headerShown: false }} />
-          <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-          <Stack.Screen name="sign-up" options={{ headerShown: false }} />
-          <Stack.Screen name="add-post" options={{ headerShown: false }} />
-          <Stack.Screen name="search" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="ads-rewards" options={{ headerShown: false }} />
-          <Stack.Screen name="ads-detail" options={{ headerShown: false }} />
-          <Stack.Screen name="notification" options={{ headerShown: false }} />
-          <Stack.Screen name="profile" options={{ headerShown: false }} />
-          <Stack.Screen name="chat-support" options={{ headerShown: false }} />
-          <Stack.Screen name="chat-history" options={{ headerShown: false }} />
-          <Stack.Screen name="chat-detail" options={{ headerShown: false }} />
-          <Stack.Screen name="faq" options={{ headerShown: false }} />
-          <Stack.Screen name="post-detail" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        {authChecked && isAuthed && !hideHelpOnRoutes.has(pathname) ? (
-          <FloatingHelpCenter />
-        ) : null}
-      </View>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <View style={{ flex: 1 }}>
+          <Stack initialRouteName="sign-in">
+            {/* <Stack.Screen name="splash" options={{ headerShown: false }} /> */}
+            <Stack.Screen name="join-community" options={{ headerShown: false }} />
+            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+            <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+            <Stack.Screen name="add-post" options={{ headerShown: false }} />
+            <Stack.Screen name="search" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="ads-rewards" options={{ headerShown: false }} />
+            <Stack.Screen name="ads-detail" options={{ headerShown: false }} />
+            <Stack.Screen name="notification" options={{ headerShown: false }} />
+            <Stack.Screen name="profile" options={{ headerShown: false }} />
+            <Stack.Screen name="chat-support" options={{ headerShown: false }} />
+            <Stack.Screen name="chat-history" options={{ headerShown: false }} />
+            <Stack.Screen name="chat-detail" options={{ headerShown: false }} />
+            <Stack.Screen name="faq" options={{ headerShown: false }} />
+            <Stack.Screen name="post-detail" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          </Stack>
+          {authChecked && isAuthed && !hideHelpOnRoutes.has(pathname) ? (
+            <FloatingHelpCenter />
+          ) : null}
+        </View>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

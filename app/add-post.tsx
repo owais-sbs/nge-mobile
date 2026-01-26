@@ -1,6 +1,6 @@
-import { storage, UserData } from '@/src/lib/storage';
 import { getAllPostCategories, PostCategoryDto } from '@/services/postCategory';
 import { addOrUpdatePost } from '@/services/posts';
+import { storage, UserData } from '@/src/lib/storage';
 import { Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
@@ -12,7 +12,6 @@ import {
     KeyboardAvoidingView,
     Modal,
     Platform,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -21,6 +20,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ACCENT = '#F5B400';
 const BORDER = '#E2E5EC';

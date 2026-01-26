@@ -5,7 +5,6 @@ import {
     ActivityIndicator,
     FlatList,
     Platform,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
@@ -13,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getAllFaqs, type FaqDto } from '@/services/faq';
 

@@ -2,19 +2,19 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 // API Services Import
-import { storage } from '@/src/lib/storage';
 import { clearAllNotifications, fetchNotifications, markAsRead } from '@/services/notification';
+import { storage } from '@/src/lib/storage';
 
 const NotificationScreen = (): React.JSX.Element => {
   const [notifications, setNotifications] = useState<any[]>([]);

@@ -1,10 +1,9 @@
 import { ChatSearchResult, searchChatMatches } from '@/services/chat';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -13,15 +12,15 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
- const [results, setResults] = useState<ChatSearchResult[]>([]);
+  const [results, setResults] = useState<ChatSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(10); 
-  const [skip, setSkip] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
+  const [skip, setSkip] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const cleanChatText = (text: string) => {
   return text.replace(/^\[[^\]]+\]\s*/, '');
@@ -60,16 +59,17 @@ const renderHighlightedText = (text: string, keyword: string) => {
   if (!keyword.trim()) {
     setResults([]);
     setSkip(0);
-    setHasMore(true);
+    setHasMore(false);
     return;
   }
 
   try {
     setLoading(true);
-    const data = await searchChatMatches(keyword, 0, 5);
+    const limit = 10;
+    const data = await searchChatMatches(keyword, 0, limit);
     setResults(data);
     setSkip(data.length);
-    setHasMore(data.length === 10);
+    setHasMore(data.length === limit);
   } finally {
     setLoading(false);
   }
@@ -91,32 +91,18 @@ const loadMore = async () => {
 
 
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      performSearch(searchQuery);
-    }, 500);
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, performSearch]);
-
-  const renderDescription = (text: string, id: number) => {
-    const limit = 100;
-    if (text.length <= limit) return <Text style={styles.resultContent}>{text}</Text>;
-
-    return (
-      <Text style={styles.resultContent}>
-        {text.substring(0, limit)}...{' '}
-        <Text 
-          style={styles.readMore} 
-          onPress={() => router.push({ pathname: '/post-detail', params: { id } })}
-        >
-          Read More
-        </Text>
-      </Text>
-    );
+  const handleSearch = () => {
+    performSearch(searchQuery);
   };
 
-  const handleLoadMore = () => {
-    setVisibleCount(prev => prev + 10);
+
+  const getGroupInitials = (groupName: string) => {
+    return groupName
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
   };
 
   return (
@@ -124,69 +110,144 @@ const loadMore = async () => {
       <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Feather name="arrow-left" size={28} color="black" />
+          <TouchableOpacity 
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Feather name="arrow-left" size={24} color="#000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>WhatsApp Archive Search</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.searchBarContainer}>
-          <Feather name="search" size={20} color="#666" style={styles.searchIcon} />
+          <Feather name="search" size={18} color="#999" style={styles.searchIcon} />
           <TextInput
             placeholder="Search messages, media, docs..."
+            placeholderTextColor="#999"
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+            blurOnSubmit={true}
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity 
+              onPress={() => {
+                setSearchQuery('');
+                setResults([]);
+                setHasMore(false);
+              }}
+              style={styles.clearButton}
+            >
+              <Feather name="x" size={18} color="#999" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity 
+            onPress={handleSearch} 
+            style={styles.searchButton}
+            activeOpacity={0.7}
+          >
+            <Feather name="search" size={18} color="#FFF" />
+          </TouchableOpacity>
         </View>
 
-        {loading ? (
+        {loading && results.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#F5B400" />
+            <Text style={styles.loadingText}>Searching...</Text>
           </View>
         ) : (
-          <ScrollView style={styles.resultsScrollView}>
-            {results.map((item, index) => (
-  <TouchableOpacity
-    key={`${item.group}-${item.line}-${index}`}
-    style={styles.resultCard}
-    onPress={() =>
-      router.push({
-        pathname: '/chat-detail',
-        params: {
-          group: item.group,
-          line: item.line.toString(),
-          keyword: searchQuery
-        },
-      })
-    }
-  >
-    <View style={styles.textContainer}>
-      <Text style={styles.groupName}>{item.group}</Text>
-      <Text style={styles.resultContent}>
-        {renderHighlightedText(cleanChatText(item.text), searchQuery)}
-
-      </Text>
-    </View>
-  </TouchableOpacity>
-))}
-{hasMore && (
-  <TouchableOpacity style={styles.loadMoreButton} onPress={loadMore}>
-    <Text style={styles.loadMoreText}>Load More</Text>
-    <Feather name="chevron-down" size={16} color="#666" />
-  </TouchableOpacity>
-)}
-
-
-
-            
-
-            {results.length === 0 && searchQuery !== '' && (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No results found</Text>
+          <ScrollView 
+            style={styles.resultsScrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {results.length > 0 && (
+              <View style={styles.resultsHeader}>
+                <Text style={styles.resultsCount}>
+                  {results.length} {results.length === 1 ? 'result' : 'results'} found
+                </Text>
               </View>
             )}
-            <View style={{ height: 100 }} /> 
+            
+            {results.map((item, index) => (
+              <TouchableOpacity
+                key={`${item.group}-${item.line}-${index}`}
+                style={styles.resultCard}
+                onPress={() =>
+                  router.push({
+                    pathname: '/chat-detail',
+                    params: {
+                      group: item.group,
+                      line: item.line.toString(),
+                      keyword: searchQuery
+                    },
+                  })
+                }
+                activeOpacity={0.7}
+              >
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>
+                      {getGroupInitials(item.group)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.textContainer}>
+                  <View style={styles.groupHeader}>
+                    <Text style={styles.groupName} numberOfLines={1}>
+                      {item.group}
+                    </Text>
+                    <Feather name="chevron-right" size={16} color="#CCC" />
+                  </View>
+                  <View style={styles.messageContainer}>
+                    {renderHighlightedText(cleanChatText(item.text), searchQuery)}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {hasMore && results.length > 0 && (
+              <TouchableOpacity 
+                style={styles.loadMoreButton} 
+                onPress={loadMore}
+                activeOpacity={0.7}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#F5B400" />
+                ) : (
+                  <>
+                    <Text style={styles.loadMoreText}>Load More</Text>
+                    <Feather name="chevron-down" size={18} color="#F5B400" />
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {results.length === 0 && searchQuery !== '' && !loading && (
+              <View style={styles.emptyContainer}>
+                <Feather name="search" size={64} color="#DDD" />
+                <Text style={styles.emptyTitle}>No results found</Text>
+                <Text style={styles.emptyText}>
+                  Try different keywords or check your spelling
+                </Text>
+              </View>
+            )}
+
+            {results.length === 0 && searchQuery === '' && (
+              <View style={styles.emptyContainer}>
+                <Feather name="message-circle" size={64} color="#DDD" />
+                <Text style={styles.emptyTitle}>Start searching</Text>
+                <Text style={styles.emptyText}>
+                  Enter keywords to search through your messages
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.bottomSpacer} /> 
           </ScrollView>
         )}
       </View>
@@ -195,56 +256,204 @@ const loadMore = async () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F4F4F4' },
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10, backgroundColor: '#FFC109' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', marginLeft: 15, color: '#000' },
-  searchBarContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 10, marginHorizontal: 15, paddingHorizontal: 10, borderWidth: 1, borderColor: '#E0E0E0', marginTop: 10 },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, height: 45, fontSize: 14 },
-  resultsScrollView: { flex: 1, marginTop: 10 },
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: '#F8F9FA' 
+  },
+  container: { 
+    flex: 1 
+  },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 8,
+  },
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: '700', 
+    color: '#1A1A1A',
+    flex: 1,
+  },
+  headerSpacer: {
+    width: 32,
+  },
+  searchBarContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    marginHorizontal: 16, 
+    paddingHorizontal: 12, 
+    marginTop: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  searchIcon: { 
+    marginRight: 10 
+  },
+  searchInput: { 
+    flex: 1, 
+    height: 48, 
+    fontSize: 15,
+    color: '#1A1A1A',
+  },
+  clearButton: {
+    padding: 4,
+    marginRight: 4,
+  },
+  searchButton: { 
+    backgroundColor: '#F5B400',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginLeft: 4,
+  },
+  resultsScrollView: { 
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 16,
+  },
+  resultsCount: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '600',
+  },
   resultCard: { 
     flexDirection: 'row', 
-    padding: 12, 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#E0D3AA', 
-    backgroundColor: 'white' 
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
-  imageContainer: { marginRight: 12 },
-  postImage: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#eee' },
-  placeholderImage: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' },
-  textContainer: { flex: 1, justifyContent: 'center' },
-  resultUser: { fontWeight: 'bold', fontSize: 15, color: '#000', marginBottom: 2 },
-  resultContent: { fontSize: 13, color: '#444', lineHeight: 18 },
-  readMore: { color: '#F5B400', fontWeight: 'bold' },
-  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 },
-  resultDate: { fontSize: 11, color: '#888' },
+  avatarContainer: {
+    marginRight: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F5B400',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  textContainer: { 
+    flex: 1,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  groupName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    flex: 1,
+    marginRight: 8,
+  },
+  messageContainer: {
+    marginTop: 2,
+  },
+  resultContent: { 
+    fontSize: 14, 
+    color: '#4A4A4A', 
+    lineHeight: 20,
+  },
+  highlight: {
+    backgroundColor: '#FFF9C4',
+    color: '#1A1A1A',
+    fontWeight: '700',
+    paddingHorizontal: 2,
+    borderRadius: 3,
+  },
   loadMoreButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    padding: 15, 
-    backgroundColor: '#fff',
-    marginTop: 10 
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#F5B400',
+    borderStyle: 'dashed',
   },
-  highlight: {
-  backgroundColor: '#FFE082',
-  color: '#000',
-  fontWeight: '700',
-},
-
-  loadMoreText: { color: '#666', fontWeight: 'bold', marginRight: 5 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyContainer: { padding: 20, alignItems: 'center' },
-  emptyText: { color: '#666' },
-  groupName: {
-  fontSize: 14,
-  fontWeight: 'bold',
-  color: '#000',
-  marginBottom: 4,
-  
-},
-
+  loadMoreText: { 
+    color: '#F5B400', 
+    fontWeight: '700', 
+    fontSize: 15,
+    marginRight: 6,
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#999',
+  },
+  emptyContainer: { 
+    padding: 40, 
+    alignItems: 'center',
+    marginTop: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: { 
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  bottomSpacer: {
+    height: 20,
+  },
 });
 
 export default SearchScreen;

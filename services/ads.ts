@@ -58,3 +58,28 @@ export const deleteAd = async (id: number): Promise<ApiResponse<null>> => {
   }
 };
 
+export interface AdSubscriptionRequest {
+  Id?: number;
+  UserId: number;
+  AdId: number;
+}
+
+export const addOrUpdateAdSubscription = async (
+  payload: AdSubscriptionRequest,
+): Promise<ApiResponse<null>> => {
+  try {
+    console.log('Adding ad subscription:', payload);
+    const { data } = await axiosInstance.post<ApiResponse<null>>(
+      '/Adsubscriptions/AddOrUpdate',
+      payload,
+    );
+    console.log('Add Ad Subscription API Response:', JSON.stringify(data, null, 2));
+    return data;
+  } catch (error: any) {
+    console.error('Add Ad Subscription API Error:', error);
+    console.error('Error Response:', error.response?.data);
+    console.error('Error Status:', error.response?.status);
+    throw error;
+  }
+};
+
