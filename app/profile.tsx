@@ -34,6 +34,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import axiosInstance from '@/src/api/axiosInstance';
 
 const RECENT_POSTS = [
   {
@@ -56,6 +57,26 @@ const RECENT_POSTS = [
   },
 ];
 
+
+export const updateProfileImage = async (
+  userId: number,
+  imageUri: string
+) => {
+  const formData = new FormData();
+
+  formData.append('UserId', userId.toString());
+  formData.append('Image', {
+    uri: imageUri,
+    name: 'profile.jpg',
+    type: 'image/jpeg',
+  } as any);
+
+  return axiosInstance.post('/Account/UpdateProfileImage', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
 const DEFAULT_AVATAR = require('@/assets/images/profile1.png');
 
 const normalizeRemoteUri = (value: unknown): string | null => {
@@ -340,41 +361,57 @@ const ProfileScreen = (): React.JSX.Element => {
     }
   };
 
-  const uploadProfileImage = async (imageUri: string) => {
-    if (!user || !user.Id) {
-      Alert.alert('Error', 'User not found. Please sign in again.');
+const uploadProfileImage = async (imageUri: string) => {
+  if (!user?.Id) {
+    Alert.alert('Error', 'User not found. Please sign in again.');
+    return;
+  }
+
+  try {
+    setUploadingImage(true);
+
+    const response = await updateProfileImage(user.Id, imageUri);
+
+    if (!response.data?.IsSuccess) {
+      Alert.alert(
+        'Error',
+        response.data?.Message || 'Failed to update profile image'
+      );
       return;
     }
 
-    try {
-      setUploadingImage(true);
-      
-      // Create FormData for image upload
-      const formData = new FormData();
-      formData.append('file', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: 'profile.jpg',
-      } as any);
-      formData.append('userId', user.Id.toString());
+    const updatedImageUrl =
+  response.data?.Data?.ProfileImage ?? imageUri;
 
-      // Update the local state immediately for better UX
-      const updatedUser = { ...user, ProfileImage: imageUri };
-      await storage.setUser(updatedUser);
-      setUser(updatedUser);
-      
-      // Reload posts to reflect the updated profile image
-      await loadPosts();
-      await loadSavedPosts();
-      
-      Alert.alert('Success', 'Profile image updated successfully!');
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      Alert.alert('Error', 'Failed to update profile image. Please try again.');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
+
+
+    // Update local user
+    const updatedUser = {
+      ...user,
+      ProfileImage: updatedImageUrl,
+    };
+
+
+    console.log("THIS is the user image before", user)
+    await storage.setUser(updatedUser);
+    setUser(updatedUser);
+    console.log("this is the user after",user)
+
+    router.dismissAll();
+    router.replace('/(tabs)')
+
+    // Refresh posts so avatars update everywhere
+    // await loadPosts();
+    // await loadSavedPosts();
+
+    // Alert.alert('Success', 'Profile image updated successfully!');
+  } catch (error) {
+    console.error('Update image error:', error);
+    Alert.alert('Error', 'Failed to update profile image');
+  } finally {
+    setUploadingImage(false);
+  }
+};
 
   const handleLike = async (postId: number) => {
     if (!user || !user.Id) {
@@ -533,10 +570,19 @@ const ProfileScreen = (): React.JSX.Element => {
           </View>
 
           <View style={styles.profileImageContainer}>
-            <Image 
-              source={user?.ProfileImage && isValidProfileImage(user.ProfileImage) ? { uri: user.ProfileImage } : require('@/assets/images/profile3.png')} 
-              style={styles.profileAvatar} 
-            />
+            {user ? (
+  <Image
+    source={
+      user.ProfileImage && isValidProfileImage(user.ProfileImage)
+        ? { uri: user.ProfileImage }
+        : require('@/assets/images/profile3.png')
+    }
+    style={styles.profileAvatar}
+  />
+) : (
+  <ActivityIndicator size="small" />
+)}
+
             <TouchableOpacity 
               style={styles.imagePickerButton}
               onPress={handleImagePicker}
