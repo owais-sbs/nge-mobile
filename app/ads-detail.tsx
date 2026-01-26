@@ -1,25 +1,24 @@
+import { addOrUpdateAdSubscription, deleteAd } from '@/services/ads';
+import { storage, UserData } from '@/src/lib/storage';
+import { hasAdminRole } from '@/src/services/authRoles';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Clipboard,
   Image,
-  Linking,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   Share,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import { deleteAd } from '@/services/ads';
-import { storage } from '@/src/lib/storage';
-import { hasAdminRole } from '@/src/services/authRoles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const AdsDetailScreen = (): React.JSX.Element => {
   const params = useLocalSearchParams<{
@@ -32,12 +31,20 @@ const AdsDetailScreen = (): React.JSX.Element => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<UserData | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     storage
       .getUser()
-      .then((user) => setIsAdmin(hasAdminRole(user)))
-      .catch(() => setIsAdmin(false));
+      .then((userData) => {
+        setUser(userData);
+        setIsAdmin(hasAdminRole(userData));
+      })
+      .catch(() => {
+        setUser(null);
+        setIsAdmin(false);
+      });
   }, []);
 
   const adId = params.id ? Number(params.id) : null;
@@ -46,6 +53,46 @@ const AdsDetailScreen = (): React.JSX.Element => {
   const imageSource = params.imageUrl
     ? { uri: params.imageUrl }
     : require('@/assets/images/ads2.png');
+
+  const handleInterested = async () => {
+    if (!user || !user.Id) {
+      Alert.alert('Error', 'Please sign in to express interest in ads.');
+      return;
+    }
+
+    if (!adId) {
+      Alert.alert('Error', 'Invalid ad information.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      const subscriptionData = {
+        Id: 0, // New subscription
+        UserId: user.Id,
+        AdId: adId,
+      };
+
+      const response = await addOrUpdateAdSubscription(subscriptionData);
+      
+      if (response.IsSuccess) {
+        setHasSubmitted(true);
+        setShowSuccessModal(true);
+      } else {
+        Alert.alert('Error', response.Message || 'Failed to express interest. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error expressing interest:', error);
+      const errorMessage = 
+        error.response?.data?.Message || 
+        error.message || 
+        'Failed to express interest. Please try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Generate deep link for the ad (for app-to-app navigation)
   const generateDeepLink = () => {
@@ -177,13 +224,10 @@ const AdsDetailScreen = (): React.JSX.Element => {
 
           {/* CTA Button */}
           <TouchableOpacity
-            style={[styles.primaryButton, hasSubmitted && styles.primaryButtonDisabled]}
+            style={[styles.primaryButton, (hasSubmitted || isSubmitting) && styles.primaryButtonDisabled]}
             activeOpacity={0.9}
-            disabled={hasSubmitted}
-            onPress={() => {
-              setHasSubmitted(true);
-              setShowSuccessModal(true);
-            }}
+            disabled={hasSubmitted || isSubmitting}
+            onPress={handleInterested}
           >
             <Text
               style={[styles.primaryButtonText, hasSubmitted && styles.disabledButtonText]}
@@ -213,7 +257,7 @@ const AdsDetailScreen = (): React.JSX.Element => {
             </View>
             <Text style={styles.modalTitle}>Successfully sent details to company</Text>
             <Text style={styles.modalSubtitle}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt
+              Thank you for your interest! We will get back to you soon.
             </Text>
             <TouchableOpacity
               style={styles.modalPrimaryButton}
