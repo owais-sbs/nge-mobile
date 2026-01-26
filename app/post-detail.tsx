@@ -1,36 +1,38 @@
 import {
-    addLike,
-    addOrUpdateComment,
-    CommentDto,
-    deleteComment,
-    deletePost,
-    getComments,
-    getPostById,
-    PostDto,
-    removeLike, toggleSavePost
+  addLike,
+  addOrUpdateComment,
+  CommentDto,
+  deleteComment,
+  deletePost,
+  getComments,
+  getPostById,
+  PostDto,
+  removeLike, toggleSavePost
 } from '@/services/posts';
 import { storage, UserData } from '@/src/lib/storage';
 import { hasAdminRole } from '@/src/services/authRoles';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { ResizeMode, Video } from 'expo-av';
+import { Image as ExpoImage } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 
@@ -98,6 +100,9 @@ const PostDetailScreen = (): React.JSX.Element => {
 
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
   useEffect(() => {
     // Load user data
@@ -469,29 +474,34 @@ const PostDetailScreen = (): React.JSX.Element => {
             ) : null}
 
             {post.ImageUrl && isImageUrl(post.ImageUrl) && (
-              <Image
-                source={{ uri: post.ImageUrl }}
-                style={[
-                  styles.postImage,
-                  imageAspectRatio ? { aspectRatio: imageAspectRatio } : {},
-                ]}
-                resizeMode="contain"
-                onLoad={() => {
-                  if (post.ImageUrl) {
-                    Image.getSize(
-                      post.ImageUrl,
-                      (width, height) => {
-                        if (width && height && height > 0) {
-                          setImageAspectRatio(width / height);
+              <TouchableOpacity
+                onPress={() => setFullScreenImage(post.ImageUrl || null)}
+                activeOpacity={0.9}
+              >
+                <Image
+                  source={{ uri: post.ImageUrl }}
+                  style={[
+                    styles.postImage,
+                    imageAspectRatio ? { aspectRatio: imageAspectRatio } : {},
+                  ]}
+                  resizeMode="contain"
+                  onLoad={() => {
+                    if (post.ImageUrl) {
+                      Image.getSize(
+                        post.ImageUrl,
+                        (width, height) => {
+                          if (width && height && height > 0) {
+                            setImageAspectRatio(width / height);
+                          }
+                        },
+                        (error) => {
+                          console.error('Error getting image size:', error);
                         }
-                      },
-                      (error) => {
-                        console.error('Error getting image size:', error);
-                      }
-                    );
-                  }
-                }}
-              />
+                      );
+                    }
+                  }}
+                />
+              </TouchableOpacity>
             )}
 
             {post.ImageUrl && isVideoUrl(post.ImageUrl) && (
@@ -679,6 +689,43 @@ const PostDetailScreen = (): React.JSX.Element => {
             <ActivityIndicator size="large" color="#F5B400" />
             <Text style={styles.deleteLoaderText}>Deleting post...</Text>
           </View>
+        </View>
+      </Modal>
+
+      {/* Full Screen Image Modal */}
+      <Modal
+        visible={fullScreenImage !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFullScreenImage(null)}
+      >
+        <View style={styles.fullScreenContainer}>
+          <TouchableOpacity
+            style={[
+              styles.fullScreenCloseButton,
+              { top: Platform.OS === 'ios' ? insets.top + 10 : 50 }
+            ]}
+            onPress={() => setFullScreenImage(null)}
+            activeOpacity={0.7}
+          >
+            <Feather name="x" size={28} color="#FFF" />
+          </TouchableOpacity>
+          {fullScreenImage && (
+            <ScrollView
+              contentContainerStyle={styles.fullScreenScrollContent}
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+            >
+              <ExpoImage
+                source={{ uri: fullScreenImage }}
+                style={[styles.fullScreenImage, { width: screenWidth, height: screenHeight }]}
+                contentFit="contain"
+                transition={200}
+              />
+            </ScrollView>
+          )}
         </View>
       </Modal>
     </SafeAreaView>
@@ -960,6 +1007,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
     fontWeight: '600',
+  },
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1000,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    padding: 8,
+  },
+  fullScreenScrollContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 
