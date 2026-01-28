@@ -1,13 +1,15 @@
-import { addOrUpdateAdSubscription, deleteAd } from '@/services/ads';
+import { deleteAd, sendUserDetailsToAd } from '@/services/ads';
 import { storage, UserData } from '@/src/lib/storage';
 import { hasAdminRole } from '@/src/services/authRoles';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Clipboard,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -15,6 +17,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -33,6 +36,10 @@ const AdsDetailScreen = (): React.JSX.Element => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userMessage, setUserMessage] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+  const [inputYPosition, setInputYPosition] = useState(0);
 
   useEffect(() => {
     storage
@@ -45,6 +52,8 @@ const AdsDetailScreen = (): React.JSX.Element => {
         setUser(null);
         setIsAdmin(false);
       });
+
+    // No automatic scrolling - let KeyboardAvoidingView handle it
   }, []);
 
   const adId = params.id ? Number(params.id) : null;
@@ -67,18 +76,18 @@ const AdsDetailScreen = (): React.JSX.Element => {
 
     try {
       setIsSubmitting(true);
-      
-      const subscriptionData = {
-        Id: 0, // New subscription
-        UserId: user.Id,
+      const payload = {
         AdId: adId,
+        AccountId: user.Id,
+        UserMessage: userMessage.trim() || undefined,
       };
 
-      const response = await addOrUpdateAdSubscription(subscriptionData);
-      
+      const response = await sendUserDetailsToAd(payload);
+
       if (response.IsSuccess) {
         setHasSubmitted(true);
         setShowSuccessModal(true);
+        setUserMessage(''); // Clear message after successful submission
       } else {
         Alert.alert('Error', response.Message || 'Failed to express interest. Please try again.');
       }
@@ -114,8 +123,8 @@ const AdsDetailScreen = (): React.JSX.Element => {
       description: description,
       imageUrl: params.imageUrl || '',
     });
-    // Replace with your actual domain when app goes live
-    return `https://ngemobilefinal.app/ads/${adId}?${urlParams.toString()}`;
+    // Use the hosted React app URL
+    return `https://admin-nge.netlify.app/ads/${adId}?${urlParams.toString()}`;
   };
 
   // Generate share link - use clickable HTTPS URL
@@ -192,17 +201,26 @@ const AdsDetailScreen = (): React.JSX.Element => {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        enabled={Platform.OS === 'ios'}
       >
-        <View
-          style={[
-            styles.cardContainer,
-            hasSubmitted && styles.cardContainerDisabled,
-          ]}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
+          <View
+            style={[
+              styles.cardContainer,
+              hasSubmitted && styles.cardContainerDisabled,
+            ]}
+          >
           <View style={styles.heroWrapper}>
             <Image source={imageSource} style={styles.heroImage} resizeMode="cover" />
             {hasSubmitted && <View style={styles.heroOverlay} />}
@@ -222,6 +240,43 @@ const AdsDetailScreen = (): React.JSX.Element => {
             </Text>
           </View>
 
+          {/* Message Input */}
+          <View 
+            style={styles.messageInputContainer}
+            onLayout={(event) => {
+              // Store the Y position of the input container
+              const { y } = event.nativeEvent.layout;
+              setInputYPosition(y);
+            }}
+          >
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.messageInput,
+                hasSubmitted && styles.messageInputDisabled
+              ]}
+              placeholder="Type your message here"
+              placeholderTextColor="#999"
+              value={userMessage}
+              onChangeText={setUserMessage}
+              multiline
+              numberOfLines={4}
+              editable={!hasSubmitted && !isSubmitting}
+              textAlignVertical="top"
+              onFocus={() => {
+                // Scroll to input position when focused, with some padding
+                if (inputYPosition > 0) {
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({
+                      y: Math.max(0, inputYPosition - 100), // 100px padding above input
+                      animated: true,
+                    });
+                  }, Platform.OS === 'ios' ? 250 : 100);
+                }
+              }}
+            />
+          </View>
+
           {/* CTA Button */}
           <TouchableOpacity
             style={[styles.primaryButton, (hasSubmitted || isSubmitting) && styles.primaryButtonDisabled]}
@@ -237,6 +292,7 @@ const AdsDetailScreen = (): React.JSX.Element => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal visible={showSuccessModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -370,12 +426,15 @@ const styles = StyleSheet.create({
     padding: 8,
     marginRight: 4,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 50, // Minimal padding - let KeyboardAvoidingView handle spacing
   },
   cardContainer: {
     backgroundColor: '#FFFFFF',
@@ -418,6 +477,26 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     lineHeight: 22,
     color: '#6B6B6B',
+  },
+  messageInputContainer: {
+    marginBottom: 20,
+  },
+  messageInput: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#1B1B1B',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    minHeight: 100,
+    maxHeight: 150,
+    textAlignVertical: 'top',
+  },
+  messageInputDisabled: {
+    backgroundColor: '#F1F1F1',
+    color: '#9E9E9E',
   },
   primaryButton: {
     backgroundColor: '#FFC107',
