@@ -1,3 +1,7 @@
+import { getUserById, login } from '@/services/auth';
+import { getUserIdFromToken } from '@/src/lib/jwt';
+import { storage } from '@/src/lib/storage';
+import { Feather } from '@expo/vector-icons';
 import axios from 'axios';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -15,10 +19,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AntDesign } from '@expo/vector-icons'; // for Google + Apple icons
-import { login, getUserById } from '@/services/auth';
-import { storage } from '@/src/lib/storage';
-import { getUserIdFromToken } from '@/src/lib/jwt';
 
 const ACCENT_COLOR = '#F5B400';
 
@@ -27,6 +27,7 @@ const SignInScreen = (): React.JSX.Element => {
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   // Check if user is already authenticated
   useEffect(() => {
@@ -133,14 +134,27 @@ const SignInScreen = (): React.JSX.Element => {
               style={styles.input}
             />
 
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Enter your password"
-              placeholderTextColor="#9C9C9C"
-              style={styles.input}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                placeholder="Enter your password"
+                placeholderTextColor="#9C9C9C"
+                style={styles.passwordInput}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+              >
+                <Feather 
+                  name={showPassword ? "eye-off" : "eye"} 
+                  size={20} 
+                  color="#9C9C9C" 
+                />
+              </TouchableOpacity>
+            </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -170,29 +184,7 @@ const SignInScreen = (): React.JSX.Element => {
             </TouchableOpacity>
           </View>
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.line} />
-            <Text style={styles.dividerText}>Or</Text>
-            <View style={styles.line} />
-          </View>
-
-          {/* Social Buttons */}
-          <View style={styles.socialContainer}>
-            <TouchableOpacity style={styles.googleButton} activeOpacity={0.85}>
-              <AntDesign name="google" size={20} color="#000" />
-              <Text style={styles.socialText}>Sign in with Google</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.appleButton} activeOpacity={0.85}>
-              <AntDesign name="apple1" size={22} color="#FFF" />
-              <Text style={styles.socialTextWhite}>
-                Sign in with Apple
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Footer */}
+          {/* Footer - moved to bottom */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
               Don't have an account?{' '}
@@ -244,6 +236,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     color: '#1B1B1B',
     backgroundColor: '#FAFAFA',
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    borderWidth: 1,
+    borderColor: '#DADADA',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingRight: 50, // Make room for eye icon
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    color: '#1B1B1B',
+    backgroundColor: '#FAFAFA',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    top: 14,
+    padding: 4,
   },
   errorText: {
     color: '#D9534F',
@@ -299,58 +312,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     letterSpacing: 0.35,
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 24,
-  },
-  line: {
-    height: 1,
-    backgroundColor: '#DADADA',
-    flex: 1,
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    color: '#6F6F6F',
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  socialContainer: {
-    gap: 12,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#DADADA',
-    borderRadius: 28,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
-    gap: 8,
-  },
-  appleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 28,
-    paddingVertical: 14,
-    backgroundColor: '#000000',
-    gap: 8,
-  },
-  socialText: {
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#1B1B1B',
-  },
-  socialTextWhite: {
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFF',
-  },
   footer: {
-    marginTop: 28,
+    marginTop: 'auto', // Push to bottom
+    paddingTop: 40,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',

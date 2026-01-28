@@ -1,17 +1,17 @@
 import { AdDto, fetchAds } from '@/services/ads';
 import { getAllPostCategories, PostCategoryDto } from '@/services/postCategory';
 import {
-    addLike,
-    addOrUpdateComment,
-    CommentDto,
-    deleteComment,
-    deletePost,
-    fetchPosts,
-    getComments,
-    getPostsByCategoryId,
-    PostDto,
-    removeLike,
-    toggleSavePost,
+  addLike,
+  addOrUpdateComment,
+  CommentDto,
+  deleteComment,
+  deletePost,
+  fetchPosts,
+  getComments,
+  getPostsByCategoryId,
+  PostDto,
+  removeLike,
+  toggleSavePost,
 } from '@/services/posts';
 import { storage, UserData } from '@/src/lib/storage';
 import { hasAdminRole } from '@/src/services/authRoles';
@@ -24,21 +24,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert,
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator, Alert,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const SF_PRO_TEXT_REGULAR = Platform.select({
