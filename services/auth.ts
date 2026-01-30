@@ -101,12 +101,20 @@ export const getUserById = async (
 };
 
 export const updateAccount = async (
-  payload: UpdateAccountRequest,
+  payload: UpdateAccountRequest | FormData,
 ): Promise<ApiResponse<UserData>> => {
   try {
+    const isFormData = payload instanceof FormData;
     const { data } = await axiosInstance.post<ApiResponse<UserData>>(
       '/Account/UpdateAccount',
       payload,
+      isFormData
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        : undefined,
     );
     return data;
   } catch (error: any) {

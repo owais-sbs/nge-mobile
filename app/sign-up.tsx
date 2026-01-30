@@ -5,18 +5,18 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const ACCENT_COLOR = '#FFC109';
@@ -88,9 +88,10 @@ const SignUpScreen = (): React.JSX.Element => {
     }
 
     if (trimmedMobile) {
-      const isValidMobile = /^[0-9+\-\s()]{7,20}$/.test(trimmedMobile);
+      // More restrictive validation since we now filter input
+      const isValidMobile = /^[0-9+\-\s()]{7,20}$/.test(trimmedMobile) && /\d{7,}/.test(trimmedMobile);
       if (!isValidMobile) {
-        setError('Please enter a valid phone number.');
+        setError('Please enter a valid phone number with at least 7 digits.');
         return;
       }
     }
@@ -259,9 +260,14 @@ const SignUpScreen = (): React.JSX.Element => {
               style={styles.input}
               placeholder="Phone number"
               placeholderTextColor="#9C9C9C"
-              keyboardType={Platform.OS === 'ios' ? 'number-pad' : 'phone-pad'}
+              keyboardType="phone-pad"
               value={mobile}
-              onChangeText={setMobile}
+              onChangeText={(text) => {
+                // Only allow numbers, spaces, hyphens, parentheses, and plus sign
+                const numericText = text.replace(/[^0-9+\-\s()]/g, '');
+                setMobile(numericText);
+              }}
+              maxLength={20}
             />
             <View style={styles.passwordContainer}>
               <TextInput
@@ -291,7 +297,13 @@ const SignUpScreen = (): React.JSX.Element => {
                 placeholder="Safety Number"
                 placeholderTextColor="#9C9C9C"
                 value={safetyNumber}
-                onChangeText={setSafetyNumber}
+                onChangeText={(text) => {
+                  // Only allow numbers
+                  const numericText = text.replace(/[^0-9]/g, '');
+                  setSafetyNumber(numericText);
+                }}
+                keyboardType="numeric"
+                maxLength={6}
               />
             ) : null}
 

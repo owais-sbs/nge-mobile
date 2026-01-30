@@ -1,22 +1,26 @@
 import { getUserById, updateAccount, UpdateAccountRequest } from '@/services/auth';
 import { storage, UserData } from '@/src/lib/storage';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router, Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const ACCENT_COLOR = '#F5B400';
 
 const EditProfileScreen = (): React.JSX.Element => {
   const insets = useSafeAreaInsets();
@@ -31,6 +35,8 @@ const EditProfileScreen = (): React.JSX.Element => {
     SafetyNumber: '',
     // Salary: '',
   });
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [originalProfileImage, setOriginalProfileImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
@@ -60,6 +66,11 @@ const EditProfileScreen = (): React.JSX.Element => {
           SafetyNumber: user.SafetyNumber?.toString() || '',
           // Salary: user.Salary?.toString() || '',
         });
+        // Set profile image if available
+        if (user.ProfileImage) {
+          setProfileImage(user.ProfileImage);
+          setOriginalProfileImage(user.ProfileImage);
+        }
       } else {
         Alert.alert('Error', response.Message || 'Failed to load user data');
         router.back();
@@ -71,6 +82,57 @@ const EditProfileScreen = (): React.JSX.Element => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Permission to access camera roll is required!');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setProfileImage(result.assets[0].uri);
+        setError(null);
+      }
+    } catch (err) {
+      console.error('Error picking image:', err);
+      setError('Failed to pick image');
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setProfileImage(null);
+  };
+
+  const isValidProfileImage = (url: string | undefined | null): boolean => {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    if (trimmed === '') return false;
+    
+    // Check if it's a local file URI (from image picker)
+    if (trimmed.startsWith('file://') || trimmed.startsWith('content://')) {
+      return true;
+    }
+    
+    // Check if it's a valid remote URL
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      // Avoid empty CloudFront URLs
+      if (trimmed === 'https://d32fcvmmn6ow56.cloudfront.net/' || trimmed.endsWith('cloudfront.net/')) {
+        return false;
+      }
+      return true;
+    }
+    
+    return false;
   };
 
   const handleUpdate = async () => {
@@ -100,20 +162,95 @@ const EditProfileScreen = (): React.JSX.Element => {
         ?.filter((rm: any) => rm.IsActive && !rm.IsDeleted)
         .map((rm: any) => rm.RoleId) || [];
 
-      const updatePayload: UpdateAccountRequest = {
-        Id: userData.Id,
-        Name: formData.Name.trim(),
-        Email: formData.Email.trim(),
-        Mobile: formData.Mobile.trim() || undefined,
-        Password: formData.Password.trim() || undefined, // Only send if provided
-        RoleIds: roleIds.length > 0 ? roleIds : undefined,
-        SafetyNumber: formData.SafetyNumber.trim() ? parseInt(formData.SafetyNumber.trim(), 10) : undefined,
-        // Salary: formData.Salary.trim() ? parseFloat(formData.Salary.trim()) : undefined,
-        CreatedBy: userData.CreatedBy || undefined,
-        UpdatedBy: userData.Name || undefined,
-      };
+      // Check if we need to upload a new image
+      const hasNewImage = profileImage && 
+                         profileImage !== originalProfileImage && 
+                         profileImage.startsWith('file://');
 
-      const response = await updateAccount(updatePayload);
+      let response;
+      
+      if (hasNewImage) {
+        // Use FormData for image upload
+        try {
+          const formDataPayload = new FormData();
+          formDataPayload.append('Id', userData.Id.toString());
+          formDataPayload.append('Name', formData.Name.trim());
+          formDataPayload.append('Email', formData.Email.trim());
+          
+          if (formData.Mobile.trim()) {
+            formDataPayload.append('Mobile', formData.Mobile.trim());
+          }
+          
+          if (formData.Password.trim()) {
+            formDataPayload.append('Password', formData.Password.trim());
+          }
+          
+          if (roleIds.length > 0) {
+            roleIds.forEach(roleId => {
+              formDataPayload.append('RoleIds', roleId.toString());
+            });
+          }
+          
+          if (formData.SafetyNumber.trim()) {
+            formDataPayload.append('SafetyNumber', formData.SafetyNumber.trim());
+          }
+          
+          if (userData.CreatedBy) {
+            formDataPayload.append('CreatedBy', userData.CreatedBy);
+          }
+          
+          if (userData.Name) {
+            formDataPayload.append('UpdatedBy', userData.Name);
+          }
+
+          // Add the profile image only if it's a local file
+          const fileName = profileImage.split('/').pop() || 'profile.jpg';
+          const match = /\.(\w+)$/.exec(fileName);
+          const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+          // Create the file object for React Native
+          const imageFile = {
+            uri: profileImage,
+            name: fileName,
+            type: type,
+          };
+
+          formDataPayload.append('ProfileImageFile', imageFile as any);
+
+          response = await updateAccount(formDataPayload);
+        } catch (formDataError) {
+          console.error('FormData creation error:', formDataError);
+          // Fallback to regular update without image
+          setError('Image upload failed. Profile updated without image.');
+          const updatePayload: UpdateAccountRequest = {
+            Id: userData.Id,
+            Name: formData.Name.trim(),
+            Email: formData.Email.trim(),
+            Mobile: formData.Mobile.trim() || undefined,
+            Password: formData.Password.trim() || undefined,
+            RoleIds: roleIds.length > 0 ? roleIds : undefined,
+            SafetyNumber: formData.SafetyNumber.trim() ? parseInt(formData.SafetyNumber.trim(), 10) : undefined,
+            CreatedBy: userData.CreatedBy || undefined,
+            UpdatedBy: userData.Name || undefined,
+          };
+          response = await updateAccount(updatePayload);
+        }
+      } else {
+        // Use regular JSON payload for updates without image
+        const updatePayload: UpdateAccountRequest = {
+          Id: userData.Id,
+          Name: formData.Name.trim(),
+          Email: formData.Email.trim(),
+          Mobile: formData.Mobile.trim() || undefined,
+          Password: formData.Password.trim() || undefined,
+          RoleIds: roleIds.length > 0 ? roleIds : undefined,
+          SafetyNumber: formData.SafetyNumber.trim() ? parseInt(formData.SafetyNumber.trim(), 10) : undefined,
+          CreatedBy: userData.CreatedBy || undefined,
+          UpdatedBy: userData.Name || undefined,
+        };
+
+        response = await updateAccount(updatePayload);
+      }
       
       if (response.IsSuccess && response.Data) {
         // Update stored user data
@@ -179,6 +316,33 @@ const EditProfileScreen = (): React.JSX.Element => {
           )}
 
           <View style={styles.formContainer}>
+            {/* Profile Image Picker */}
+            <View style={styles.profileImageContainer}>
+              {profileImage && isValidProfileImage(profileImage) ? (
+                <View style={styles.profileImageWrapper}>
+                  <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={handleRemoveImage}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="x" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.profileImagePlaceholder}
+                  onPress={handlePickImage}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="camera" size={24} color="#9C9C9C" />
+                  <Text style={styles.profileImageText}>
+                    {originalProfileImage ? 'Change Profile Photo' : 'Add Profile Photo'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Name *</Text>
               <TextInput
@@ -212,8 +376,13 @@ const EditProfileScreen = (): React.JSX.Element => {
                 placeholder="Enter your mobile number"
                 placeholderTextColor="#999"
                 value={formData.Mobile}
-                onChangeText={(text) => setFormData({ ...formData, Mobile: text })}
+                onChangeText={(text) => {
+                  // Only allow numbers, spaces, hyphens, parentheses, and plus sign
+                  const numericText = text.replace(/[^0-9+\-\s()]/g, '');
+                  setFormData({ ...formData, Mobile: numericText });
+                }}
                 keyboardType="phone-pad"
+                maxLength={20}
               />
             </View>
 
@@ -254,8 +423,13 @@ const EditProfileScreen = (): React.JSX.Element => {
                   placeholder="Enter safety number"
                   placeholderTextColor="#999"
                   value={formData.SafetyNumber}
-                  onChangeText={(text) => setFormData({ ...formData, SafetyNumber: text })}
+                  onChangeText={(text) => {
+                    // Only allow numbers
+                    const numericText = text.replace(/[^0-9]/g, '');
+                    setFormData({ ...formData, SafetyNumber: numericText });
+                  }}
                   keyboardType="numeric"
+                  maxLength={10}
                 />
               </View>
             )}
@@ -400,7 +574,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   saveButton: {
-    backgroundColor: '#F5B400',
+    backgroundColor: ACCENT_COLOR,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -413,6 +587,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1B1B1B',
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  profileImageWrapper: {
+    position: 'relative',
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: ACCENT_COLOR,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#D9534F',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
+  },
+  profileImageText: {
+    marginTop: 4,
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: '#9C9C9C',
+    textAlign: 'center',
   },
 });
 

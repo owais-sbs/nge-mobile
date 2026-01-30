@@ -1,17 +1,17 @@
 import { AdDto, fetchAds } from '@/services/ads';
 import { getAllPostCategories, PostCategoryDto } from '@/services/postCategory';
 import {
-  addLike,
-  addOrUpdateComment,
-  CommentDto,
-  deleteComment,
-  deletePost,
-  fetchPosts,
-  getComments,
-  getPostsByCategoryId,
-  PostDto,
-  removeLike,
-  toggleSavePost,
+    addLike,
+    addOrUpdateComment,
+    CommentDto,
+    deleteComment,
+    deletePost,
+    fetchPosts,
+    getComments,
+    getPostsByCategoryId,
+    PostDto,
+    removeLike,
+    toggleSavePost,
 } from '@/services/posts';
 import { storage, UserData } from '@/src/lib/storage';
 import { hasAdminRole } from '@/src/services/authRoles';
@@ -24,21 +24,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator, Alert,
+    Dimensions,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const SF_PRO_TEXT_REGULAR = Platform.select({
@@ -102,6 +102,7 @@ const HomeScreen = (): React.JSX.Element => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [posts, setPosts] = useState<PostDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoryLoading, setCategoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [page, setPage] = useState(1);
@@ -222,7 +223,13 @@ const HomeScreen = (): React.JSX.Element => {
   const loadPosts = useCallback(
   async (pageToLoad: number, replace = false, categoryId: number | null = null) => {
     try {
-      setLoading(true);
+      // Use different loading states for initial load vs category switching
+      if (posts.length === 0) {
+        setLoading(true);
+      } else {
+        setCategoryLoading(true);
+      }
+      
       let response;
       
       if (categoryId !== null) {
@@ -255,6 +262,7 @@ const HomeScreen = (): React.JSX.Element => {
       setError('Unable to load posts.');
     } finally {
       setLoading(false);
+      setCategoryLoading(false);
     }
   },
   [posts.length]
@@ -288,13 +296,13 @@ const HomeScreen = (): React.JSX.Element => {
 );
 
   const handleLoadMore = useCallback(() => {
-    if (!loading && hasMore && selectedCategoryId === null) {
+    if (!loading && !categoryLoading && hasMore && selectedCategoryId === null) {
       // Only allow load more for all posts, not for category-filtered posts
       loadPosts(page, false, null).catch(() => {
         /* handled */
       });
     }
-  }, [hasMore, loading, page, loadPosts, selectedCategoryId]);
+  }, [hasMore, loading, categoryLoading, page, loadPosts, selectedCategoryId]);
 
   const handleLike = async (postId: number) => {
     if (!user || !user.Id) {
@@ -669,64 +677,66 @@ useFocusEffect(
 
           <View style={styles.contentArea}>
             <Text style={styles.trendingTitle}>Trending Topics</Text>
-            {loadingCategories ? (
-              <View style={styles.trendingContainer}>
-                <ActivityIndicator size="small" color="#F5B400" />
-              </View>
-            ) : categories.length > 0 ? (
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.trendingScrollContent}
-                style={styles.trendingScrollView}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.topicChip,
-                    selectedCategoryId === null && styles.topicChipActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedCategoryId(null);
-                    // Load all posts
-                    setPage(1);
-                    setHasMore(true);
-                    loadPosts(1, true, null).catch(() => {
-                      /* handled in load */
-                    });
-                  }}
+            <View style={styles.trendingFixedContainer}>
+              {loadingCategories ? (
+                <View style={styles.trendingContainer}>
+                  <ActivityIndicator size="small" color="#F5B400" />
+                </View>
+              ) : categories.length > 0 ? (
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.trendingScrollContent}
+                  style={styles.trendingScrollView}
                 >
-                  <Text style={styles.topicText}>All</Text>
-                </TouchableOpacity>
-                {categories.map((category) => (
                   <TouchableOpacity
-                    key={category.Id}
                     style={[
                       styles.topicChip,
-                      selectedCategoryId === category.Id && styles.topicChipActive,
+                      selectedCategoryId === null && styles.topicChipActive,
                     ]}
                     onPress={() => {
-                      const newCategoryId = selectedCategoryId === category.Id ? null : category.Id;
-                      setSelectedCategoryId(newCategoryId);
-                      // Load posts for the selected category or all posts if deselected
+                      setSelectedCategoryId(null);
+                      // Load all posts
                       setPage(1);
                       setHasMore(true);
-                      loadPosts(1, true, newCategoryId).catch(() => {
+                      loadPosts(1, true, null).catch(() => {
                         /* handled in load */
                       });
                     }}
                   >
-                    <Text style={styles.topicText}>#{category.Title}</Text>
+                    <Text style={styles.topicText}>All</Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.trendingContainer}>
-                <Text style={styles.emptyCategoriesText}>No categories available</Text>
-              </View>
-            )}
+                  {categories.map((category) => (
+                    <TouchableOpacity
+                      key={category.Id}
+                      style={[
+                        styles.topicChip,
+                        selectedCategoryId === category.Id && styles.topicChipActive,
+                      ]}
+                      onPress={() => {
+                        const newCategoryId = selectedCategoryId === category.Id ? null : category.Id;
+                        setSelectedCategoryId(newCategoryId);
+                        // Load posts for the selected category or all posts if deselected
+                        setPage(1);
+                        setHasMore(true);
+                        loadPosts(1, true, newCategoryId).catch(() => {
+                          /* handled in load */
+                        });
+                      }}
+                    >
+                      <Text style={styles.topicText}>#{category.Title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.trendingContainer}>
+                  <Text style={styles.emptyCategoriesText}>No categories available</Text>
+                </View>
+              )}
+            </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            {loading ? (
+            {loading && posts.length === 0 ? (
               <ActivityIndicator style={styles.initialLoader} color="#F5B400" />
             ) : null}
             {!loading && posts.length === 0 && !error ? (
@@ -871,9 +881,9 @@ useFocusEffect(
   <TouchableOpacity
     style={styles.loadMoreButton}
     onPress={handleLoadMore}
-    disabled={loading}
+    disabled={loading || categoryLoading}
   >
-    {loading ? (
+    {loading || categoryLoading ? (
       <ActivityIndicator size="small" color="#8A6A00" />
     ) : (
       <Text style={styles.loadMoreText}>Load more posts</Text>
@@ -1206,8 +1216,8 @@ const styles = StyleSheet.create({
   },
   heroImageTouchable: {
     width: SCREEN_WIDTH - 32, // Reduced margins for better visual impact
-    maxWidth: '100%',
-    minHeight: 180, // Minimum height to ensure good visibility
+    maxWidth: 400, // Maximum width to prevent oversizing on large screens
+    height: 180, // Fixed height for consistent sizing
     borderRadius: 20, // Increased border radius
     overflow: 'hidden',
     alignSelf: 'center',
@@ -1221,9 +1231,7 @@ const styles = StyleSheet.create({
   },
   heroImage: {
     width: '100%',
-    height: undefined, // Let height be determined by aspect ratio
-    aspectRatio: 16 / 9, // Standard aspect ratio for horizontal images
-    minHeight: 180,
+    height: 180, // Fixed height matching container
   },
   heroOverlay: {
     position: 'absolute',
@@ -1314,17 +1322,21 @@ const styles = StyleSheet.create({
     letterSpacing: 0.35,
     marginBottom: 10,
   },
-  trendingContainer: {
-    flexDirection: 'row',
+  trendingFixedContainer: {
+    height: 60, // Fixed height container to prevent layout shifts
     marginBottom: 10,
-    gap: 10,
+  },
+  trendingContainer: {
+    height: 50, // Fixed height for consistent spacing
+    justifyContent: 'center',
   },
   trendingScrollView: {
-    marginBottom: 10,
+    height: 50, // Fixed height matching container
   },
   trendingScrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 50, // Fixed height for content
   },
   emptyCategoriesText: {
     fontSize: 14,
@@ -1337,9 +1349,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#F0F0F0',
     marginRight: 10,
-    alignSelf: 'flex-start',
+    alignSelf: 'center', // Center align instead of flex-start
     flexShrink: 0,
     flexGrow: 0,
+    height: 36, // Fixed height for chips
+    justifyContent: 'center',
   },
   topicChipActive: {
     backgroundColor: '#FFFBEA',
