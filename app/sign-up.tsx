@@ -1,33 +1,35 @@
-import { createAccount } from '@/services/auth';
-import { Feather } from '@expo/vector-icons';
-import axios from 'axios';
-import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
-import {
-    ActivityIndicator,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { createAccount } from "@/services/auth";
+import { Feather } from "@expo/vector-icons";
+import axios from "axios";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
+import React, { useState } from "react";
 
-const ACCENT_COLOR = '#FFC109';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+const ACCENT_COLOR = "#FFC109";
 
 const SignUpScreen = (): React.JSX.Element => {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [password, setPassword] = useState('');
-  const [accountType, setAccountType] = useState<'user' | 'engineer'>('user');
-  const [safetyNumber, setSafetyNumber] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [password, setPassword] = useState("");
+  const [accountType, setAccountType] = useState<"user" | "engineer">("user");
+  const [safetyNumber, setSafetyNumber] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +37,10 @@ const SignUpScreen = (): React.JSX.Element => {
 
   const handlePickImage = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Permission to access camera roll is required!');
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        setError("Permission to access camera roll is required!");
         return;
       }
 
@@ -53,8 +56,8 @@ const SignUpScreen = (): React.JSX.Element => {
         setError(null);
       }
     } catch (err) {
-      console.error('Error picking image:', err);
-      setError('Failed to pick image');
+      console.error("Error picking image:", err);
+      setError("Failed to pick image");
     }
   };
 
@@ -69,38 +72,40 @@ const SignUpScreen = (): React.JSX.Element => {
     const trimmedPassword = password.trim();
 
     if (!trimmedName || !trimmedPassword) {
-      setError('Full name and password are required.');
+      setError("Full name and password are required.");
       return;
     }
 
     // Either email OR phone is required (or both)
     if (!trimmedEmail && !trimmedMobile) {
-      setError('Please enter an email or phone number.');
+      setError("Please enter an email or phone number.");
       return;
     }
 
     if (trimmedEmail) {
       const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
       if (!isValidEmail) {
-        setError('Please enter a valid email address.');
+        setError("Please enter a valid email address.");
         return;
       }
     }
 
     if (trimmedMobile) {
       // More restrictive validation since we now filter input
-      const isValidMobile = /^[0-9+\-\s()]{7,20}$/.test(trimmedMobile) && /\d{7,}/.test(trimmedMobile);
+      const isValidMobile =
+        /^[0-9+\-\s()]{7,20}$/.test(trimmedMobile) &&
+        /\d{7,}/.test(trimmedMobile);
       if (!isValidMobile) {
-        setError('Please enter a valid phone number with at least 7 digits.');
+        setError("Please enter a valid phone number with at least 7 digits.");
         return;
       }
     }
 
-    if (accountType === 'engineer') {
+    if (accountType === "engineer") {
       const trimmedSafety = safetyNumber.trim();
       const isValidSafety = /^\d{6}$/.test(trimmedSafety);
       if (!isValidSafety) {
-        setError('Invalid safety number.');
+        setError("Invalid safety number.");
         return;
       }
     }
@@ -110,31 +115,30 @@ const SignUpScreen = (): React.JSX.Element => {
       setError(null);
 
       const formData = new FormData();
-      formData.append('Id', '0');
-      formData.append('Name', trimmedName);
-      formData.append('Password', trimmedPassword);
+      formData.append("Id", "0");
+      formData.append("Name", trimmedName);
+      formData.append("Password", trimmedPassword);
 
       // Backend compatibility: if only one is provided, send it for both fields.
       // If both are provided, send them as-is.
       if (trimmedEmail || trimmedMobile) {
-        formData.append('Email', trimmedEmail || trimmedMobile);
-        formData.append('Mobile', trimmedMobile || trimmedEmail);
+        formData.append("Email", trimmedEmail || trimmedMobile);
+        formData.append("Mobile", trimmedMobile || trimmedEmail);
       }
-      
-      if (accountType === 'engineer') {
-        // For arrays in FormData, append each value separately
-        formData.append('RoleIds', '2');
-        formData.append('SafetyNumber', safetyNumber.trim());
+
+      if (accountType === "engineer") {
+        formData.append("RoleIds[0]", "2");
+        formData.append("SafetyNumber", safetyNumber.trim());
       } else {
-        formData.append('RoleIds', '3');
+        formData.append("RoleIds[0]", "3");
       }
 
       if (profileImage) {
-        const fileName = profileImage.split('/').pop() || 'profile.jpg';
+        const fileName = profileImage.split("/").pop() || "profile.jpg";
         const match = /\.(\w+)$/.exec(fileName);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
+        const type = match ? `image/${match[1]}` : "image/jpeg";
 
-        formData.append('ProfileImageFile', {
+        formData.append("ProfileImageFile", {
           uri: profileImage,
           name: fileName,
           type: type,
@@ -142,16 +146,30 @@ const SignUpScreen = (): React.JSX.Element => {
       }
 
       const response = await createAccount(formData);
+
       if (!response.IsSuccess) {
-        setError(response.Message ?? 'Unable to create account. Please try again.');
+        setError(
+          response.Message ?? "Unable to create account. Please try again.",
+        );
         return;
       }
-      router.replace('/sign-in');
+
+      Alert.alert(
+        "Account Created 🎉",
+        "Your account has been created successfully. Please sign in to continue.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/sign-in"),
+          },
+        ],
+        { cancelable: false },
+      );
     } catch (err) {
       const message = axios.isAxiosError(err)
-        ? (err.response?.data as { message?: string })?.message ??
-          'Unable to create account. Please try again.'
-        : 'Something went wrong. Please try again.';
+        ? ((err.response?.data as { message?: string })?.message ??
+          "Unable to create account. Please try again.")
+        : "Something went wrong. Please try again.";
       setError(message);
     } finally {
       setLoading(false);
@@ -167,7 +185,7 @@ const SignUpScreen = (): React.JSX.Element => {
         keyboardShouldPersistTaps="handled"
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.container}
         >
           <View style={styles.header}>
@@ -179,16 +197,16 @@ const SignUpScreen = (): React.JSX.Element => {
             <TouchableOpacity
               style={[
                 styles.accountTypeButton,
-                accountType === 'user' && styles.accountTypeSelected,
+                accountType === "user" && styles.accountTypeSelected,
               ]}
-              onPress={() => setAccountType('user')}
+              onPress={() => setAccountType("user")}
               activeOpacity={0.85}
               disabled={loading}
             >
               <Text
                 style={[
                   styles.accountTypeLabel,
-                  accountType === 'user' && styles.accountTypeLabelSelected,
+                  accountType === "user" && styles.accountTypeLabelSelected,
                 ]}
               >
                 Sign up as User
@@ -197,16 +215,16 @@ const SignUpScreen = (): React.JSX.Element => {
             <TouchableOpacity
               style={[
                 styles.accountTypeButton,
-                accountType === 'engineer' && styles.accountTypeSelected,
+                accountType === "engineer" && styles.accountTypeSelected,
               ]}
-              onPress={() => setAccountType('engineer')}
+              onPress={() => setAccountType("engineer")}
               activeOpacity={0.85}
               disabled={loading}
             >
               <Text
                 style={[
                   styles.accountTypeLabel,
-                  accountType === 'engineer' && styles.accountTypeLabelSelected,
+                  accountType === "engineer" && styles.accountTypeLabelSelected,
                 ]}
               >
                 Sign up as Engineer
@@ -219,7 +237,10 @@ const SignUpScreen = (): React.JSX.Element => {
             <View style={styles.profileImageContainer}>
               {profileImage ? (
                 <View style={styles.profileImageWrapper}>
-                  <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                  <Image
+                    source={{ uri: profileImage }}
+                    style={styles.profileImage}
+                  />
                   <TouchableOpacity
                     style={styles.removeImageButton}
                     onPress={handleRemoveImage}
@@ -264,7 +285,7 @@ const SignUpScreen = (): React.JSX.Element => {
               value={mobile}
               onChangeText={(text) => {
                 // Only allow numbers, spaces, hyphens, parentheses, and plus sign
-                const numericText = text.replace(/[^0-9+\-\s()]/g, '');
+                const numericText = text.replace(/[^0-9+\-\s()]/g, "");
                 setMobile(numericText);
               }}
               maxLength={20}
@@ -283,15 +304,15 @@ const SignUpScreen = (): React.JSX.Element => {
                 onPress={() => setShowPassword(!showPassword)}
                 activeOpacity={0.7}
               >
-                <Feather 
-                  name={showPassword ? "eye-off" : "eye"} 
-                  size={20} 
-                  color="#9C9C9C" 
+                <Feather
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={20}
+                  color="#9C9C9C"
                 />
               </TouchableOpacity>
             </View>
 
-            {accountType === 'engineer' ? (
+            {accountType === "engineer" ? (
               <TextInput
                 style={styles.input}
                 placeholder="Safety Number"
@@ -299,7 +320,7 @@ const SignUpScreen = (): React.JSX.Element => {
                 value={safetyNumber}
                 onChangeText={(text) => {
                   // Only allow numbers
-                  const numericText = text.replace(/[^0-9]/g, '');
+                  const numericText = text.replace(/[^0-9]/g, "");
                   setSafetyNumber(numericText);
                 }}
                 keyboardType="numeric"
@@ -310,7 +331,10 @@ const SignUpScreen = (): React.JSX.Element => {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+              style={[
+                styles.primaryButton,
+                loading && styles.primaryButtonDisabled,
+              ]}
               activeOpacity={0.9}
               onPress={handleSignUp}
               disabled={loading}
@@ -325,8 +349,11 @@ const SignUpScreen = (): React.JSX.Element => {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              have account?{' '}
-              <Text style={styles.linkText} onPress={() => router.replace('/sign-in')}>
+              have account?{" "}
+              <Text
+                style={styles.linkText}
+                onPress={() => router.replace("/sign-in")}
+              >
                 Sign in here
               </Text>
             </Text>
@@ -340,7 +367,7 @@ const SignUpScreen = (): React.JSX.Element => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   scrollContent: {
     flexGrow: 1,
@@ -357,50 +384,50 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
     lineHeight: 38,
     letterSpacing: 0.2,
-    color: '#0F1D3A',
+    color: "#0F1D3A",
   },
   subtitle: {
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
-    color: '#6F7A91',
+    fontFamily: "Inter_500Medium",
+    color: "#6F7A91",
   },
   form: {
     gap: 18,
   },
   accountTypeSwitch: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     borderRadius: 18,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 16,
   },
   accountTypeButton: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
   },
   accountTypeSelected: {
-    backgroundColor: 'rgba(255, 193, 9, 0.15)',
+    backgroundColor: "rgba(255, 193, 9, 0.15)",
   },
   accountTypeLabel: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#6F7A91',
+    fontFamily: "Inter_500Medium",
+    color: "#6F7A91",
   },
   accountTypeLabelSelected: {
-    color: '#0F1D3A',
+    color: "#0F1D3A",
   },
   profileImageContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 18,
   },
   profileImageWrapper: {
-    position: 'relative',
+    position: "relative",
   },
   profileImage: {
     width: 100,
@@ -410,80 +437,80 @@ const styles = StyleSheet.create({
     borderColor: ACCENT_COLOR,
   },
   removeImageButton: {
-    position: 'absolute',
+    position: "absolute",
     top: -5,
     right: -5,
-    backgroundColor: '#D9534F',
+    backgroundColor: "#D9534F",
     borderRadius: 12,
     width: 24,
     height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileImagePlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    borderColor: "#E0E0E0",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9F9F9",
   },
   profileImageText: {
     marginTop: 4,
     fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#9C9C9C',
-    textAlign: 'center',
+    fontFamily: "Inter_400Regular",
+    color: "#9C9C9C",
+    textAlign: "center",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     borderRadius: 16,
     paddingHorizontal: 18,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#1B1B1B',
-    shadowColor: '#000000',
+    fontFamily: "Inter_400Regular",
+    color: "#1B1B1B",
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
   },
   passwordContainer: {
-    position: 'relative',
+    position: "relative",
   },
   passwordInput: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     borderRadius: 16,
     paddingHorizontal: 18,
     paddingVertical: 16,
     paddingRight: 50, // Make room for eye icon
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#1B1B1B',
-    shadowColor: '#000000',
+    fontFamily: "Inter_400Regular",
+    color: "#1B1B1B",
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
   },
   eyeButton: {
-    position: 'absolute',
+    position: "absolute",
     right: 18,
     top: 16,
     padding: 4,
   },
   errorText: {
-    color: '#D9534F',
+    color: "#D9534F",
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: "Inter_500Medium",
     marginTop: -6,
   },
   primaryButton: {
@@ -491,7 +518,7 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT_COLOR,
     borderRadius: 30,
     paddingVertical: 18,
-    alignItems: 'center',
+    alignItems: "center",
     shadowColor: ACCENT_COLOR,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
@@ -503,23 +530,23 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: 18,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.35,
-    color: '#0F1D3A',
+    color: "#0F1D3A",
   },
   footer: {
-    marginTop: 'auto', // Push to bottom
+    marginTop: "auto", // Push to bottom
     paddingTop: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   footerText: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#6F7A91',
+    fontFamily: "Inter_400Regular",
+    color: "#6F7A91",
   },
   linkText: {
-    fontFamily: 'Inter_600SemiBold',
-    color: '#34A853',
+    fontFamily: "Inter_600SemiBold",
+    color: "#34A853",
   },
 });
 

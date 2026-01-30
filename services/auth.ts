@@ -1,4 +1,4 @@
-import axiosInstance from '@/src/api/axiosInstance';
+import axiosInstance from "@/src/api/axiosInstance";
 
 export interface ApiResponse<TData> {
   IsSuccess: boolean;
@@ -67,7 +67,7 @@ export const login = async (
   payload: LoginRequest,
 ): Promise<ApiResponse<LoginResponseData>> => {
   const { data } = await axiosInstance.post<ApiResponse<LoginResponseData>>(
-    '/Account/Login',
+    "/Account/Login",
     payload,
   );
   return data;
@@ -77,13 +77,15 @@ export const createAccount = async (
   payload: CreateAccountRequest | FormData,
 ): Promise<ApiResponse<CreateAccountResponseData>> => {
   const isFormData = payload instanceof FormData;
-  const { data } = await axiosInstance.post<ApiResponse<CreateAccountResponseData>>(
-    '/Account/CreateAccount',
+  const { data } = await axiosInstance.post<
+    ApiResponse<CreateAccountResponseData>
+  >(
+    "/Account/CreateUserAccount",
     payload,
     isFormData
       ? {
           headers: {
-            'Content-Type': 'multipart/form-data',
+            "Content-Type": "multipart/form-data",
           },
         }
       : undefined,
@@ -106,21 +108,20 @@ export const updateAccount = async (
   try {
     const isFormData = payload instanceof FormData;
     const { data } = await axiosInstance.post<ApiResponse<UserData>>(
-      '/Account/UpdateAccount',
+      "/Account/UpdateAccount",
       payload,
       isFormData
         ? {
             headers: {
-              'Content-Type': 'multipart/form-data',
+              "Content-Type": "multipart/form-data",
             },
           }
         : undefined,
     );
     return data;
   } catch (error: any) {
-    console.error('UpdateAccount API Error:', error);
-    console.error('Error Response:', error.response?.data);
+    console.error("UpdateAccount API Error:", error);
+    console.error("Error Response:", error.response?.data);
     throw error;
   }
 };
-
