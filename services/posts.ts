@@ -1,5 +1,5 @@
-import axiosInstance from '@/src/api/axiosInstance';
 import { ApiResponse } from '@/services/auth';
+import axiosInstance from '@/src/api/axiosInstance';
 
 export interface PostDto {
   Id: number;

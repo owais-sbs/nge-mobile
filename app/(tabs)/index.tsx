@@ -1,17 +1,17 @@
 import { AdDto, fetchAds } from '@/services/ads';
 import { getAllPostCategories, PostCategoryDto } from '@/services/postCategory';
 import {
-    addLike,
-    addOrUpdateComment,
-    CommentDto,
-    deleteComment,
-    deletePost,
-    fetchPosts,
-    getComments,
-    getPostsByCategoryId,
-    PostDto,
-    removeLike,
-    toggleSavePost,
+  addLike,
+  addOrUpdateComment,
+  CommentDto,
+  deleteComment,
+  deletePost,
+  fetchPosts,
+  getComments,
+  getPostsByCategoryId,
+  PostDto,
+  removeLike,
+  toggleSavePost,
 } from '@/services/posts';
 import { storage, UserData } from '@/src/lib/storage';
 import { hasAdminRole } from '@/src/services/authRoles';
@@ -24,21 +24,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert,
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator, Alert,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const SF_PRO_TEXT_REGULAR = Platform.select({
@@ -123,6 +123,8 @@ const HomeScreen = (): React.JSX.Element => {
   const [showDeleteLoader, setShowDeleteLoader] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
+  const [showDeleteCommentConfirm, setShowDeleteCommentConfirm] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [ads, setAds] = useState<AdDto[]>([]);
   const [loadingAds, setLoadingAds] = useState(false);
   const [categories, setCategories] = useState<PostCategoryDto[]>([]);
@@ -430,19 +432,24 @@ useFocusEffect(
 );
 
   const handleOpenComments = async (postId: number) => {
+    console.log('Opening comments for post:', postId);
     setSelectedPostId(postId);
     setShowCommentsModal(true);
     setLoadingComments(true);
     try {
       const response = await getComments(postId);
       if (response.IsSuccess && response.Data) {
-        console.log('Comments data with User profile images:', JSON.stringify(response.Data.map(c => ({
+        console.log('Comments loaded:', response.Data.length);
+        console.log('Current user:', user?.Id);
+        console.log('Comments with user IDs:', response.Data.map(c => ({
           id: c.Id,
+          userId: c.UserId,
           userName: c.User?.Name,
-          profileImage: c.User?.ProfileImage
-        })), null, 2));
+          canDelete: user?.Id === c.UserId
+        })));
         setComments(response.Data);
       } else {
+        console.log('No comments found or failed to load');
         setComments([]);
       }
     } catch (err) {
@@ -513,51 +520,63 @@ useFocusEffect(
   };
 
   const handleDeleteComment = async (commentId: number) => {
+    console.log('=== DELETE COMMENT CLICKED ===', commentId);
+    console.log('User:', user);
+    console.log('Selected Post ID:', selectedPostId);
+    
     if (!user || !user.Id || !selectedPostId) {
+      console.log('Missing user or selectedPostId');
       Alert.alert('Error', 'Please sign in to delete comments.');
       return;
     }
 
-    Alert.alert(
-      'Delete Comment',
-      'Are you sure you want to delete this comment? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeletingCommentId(commentId);
-              const response = await deleteComment(commentId);
-              
-              if (response.IsSuccess) {
-                // Remove comment from list
-                setComments((prev) => prev.filter((c) => c.Id !== commentId));
-                // Update comment count in posts
-                setPosts((prev) =>
-                  prev.map((post) =>
-                    post.Id === selectedPostId
-                      ? { ...post, CommentCount: Math.max(0, post.CommentCount - 1) }
-                      : post
-                  )
-                );
-              } else {
-                Alert.alert('Error', response.Message || 'Failed to delete comment');
-              }
-            } catch (err: any) {
-              console.error('Error deleting comment:', err);
-              Alert.alert('Error', 'Failed to delete comment. Please try again.');
-            } finally {
-              setDeletingCommentId(null);
-            }
-          },
-        },
-      ],
-    );
+    console.log('Showing delete confirmation modal');
+    setCommentToDelete(commentId);
+    setShowDeleteCommentConfirm(true);
+  };
+
+  const confirmDeleteComment = async () => {
+    if (!commentToDelete) return;
+    
+    console.log('Delete confirmed, starting deletion...');
+    setShowDeleteCommentConfirm(false);
+    
+    try {
+      setDeletingCommentId(commentToDelete);
+      console.log('Calling deleteComment API with commentId:', commentToDelete);
+      const response = await deleteComment(commentToDelete);
+      console.log('Delete response:', response);
+      
+      if (response.IsSuccess) {
+        console.log('Delete successful, updating UI');
+        // Remove comment from list
+        setComments((prev) => prev.filter((c) => c.Id !== commentToDelete));
+        // Update comment count in posts
+        setPosts((prev) =>
+          prev.map((post) =>
+            post.Id === selectedPostId
+              ? { ...post, CommentCount: Math.max(0, post.CommentCount - 1) }
+              : post
+          )
+        );
+        Alert.alert('Success', 'Comment deleted successfully');
+      } else {
+        console.log('Delete failed:', response.Message);
+        Alert.alert('Error', response.Message || 'Failed to delete comment');
+      }
+    } catch (err: any) {
+      console.error('Error deleting comment:', err);
+      Alert.alert('Error', 'Failed to delete comment. Please try again.');
+    } finally {
+      setDeletingCommentId(null);
+      setCommentToDelete(null);
+    }
+  };
+
+  const cancelDeleteComment = () => {
+    console.log('Delete cancelled');
+    setShowDeleteCommentConfirm(false);
+    setCommentToDelete(null);
   };
 
   const formatCommentTime = (dateString?: string): string => {
@@ -593,7 +612,7 @@ useFocusEffect(
             <View style={styles.headerContent}>
               <TouchableOpacity onPress={() => router.push('/profile')}>
                 <Image 
-                          source={isValidProfileImage(user?.ProfileImage) ? { uri: user.ProfileImage } : require('@/assets/images/profile3.png')} 
+                          source={isValidProfileImage(user?.ProfileImage) ? { uri: user!.ProfileImage! } : require('@/assets/images/profile3.png')} 
                           style={styles.profileImage}
                         />
               </TouchableOpacity>
@@ -954,7 +973,7 @@ useFocusEffect(
                     <View style={styles.commentHeader}>
                       <View style={styles.commentHeaderLeft}>
                         <Image
-                          source={isValidProfileImage(comment.User?.ProfileImage) ? { uri: comment.User.ProfileImage } : DEFAULT_AVATAR}
+                          source={isValidProfileImage(comment.User?.ProfileImage) ? { uri: comment.User!.ProfileImage! } : DEFAULT_AVATAR}
                           style={styles.commentAvatar}
                         />
                         <View style={styles.commentUserInfo}>
@@ -969,9 +988,13 @@ useFocusEffect(
                       {user && user.Id === comment.UserId && (
                         <View style={styles.commentActions}>
                           <TouchableOpacity
-                            onPress={() => handleEditComment(comment)}
+                            onPress={() => {
+                              console.log('Edit button pressed for comment:', comment.Id);
+                              handleEditComment(comment);
+                            }}
                             style={styles.editCommentButton}
                             disabled={editingCommentId === comment.Id || deletingCommentId === comment.Id}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           >
                             <Feather 
                               name="edit-2" 
@@ -980,9 +1003,14 @@ useFocusEffect(
                             />
                           </TouchableOpacity>
                           <TouchableOpacity
-                            onPress={() => handleDeleteComment(comment.Id)}
+                            onPress={() => {
+                              console.log('Delete button pressed for comment:', comment.Id);
+                              console.log('Comment UserId:', comment.UserId, 'Current User Id:', user?.Id);
+                              handleDeleteComment(comment.Id);
+                            }}
                             style={styles.deleteCommentButton}
                             disabled={editingCommentId === comment.Id || deletingCommentId === comment.Id}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           >
                             {deletingCommentId === comment.Id ? (
                               <ActivityIndicator size="small" color="#D9534F" />
@@ -1107,6 +1135,40 @@ useFocusEffect(
                     Alert.alert('Error', errorMessage);
                   }
                 }}
+              >
+                <Text style={styles.deleteConfirmDeleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Comment Confirmation Modal */}
+      <Modal
+        visible={showDeleteCommentConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowDeleteCommentConfirm(false);
+          setCommentToDelete(null);
+        }}
+      >
+        <View style={styles.deleteConfirmOverlay}>
+          <View style={styles.deleteConfirmContainer}>
+            <Text style={styles.deleteConfirmTitle}>Delete Comment</Text>
+            <Text style={styles.deleteConfirmMessage}>
+              Are you sure you want to delete this comment? This action cannot be undone.
+            </Text>
+            <View style={styles.deleteConfirmButtons}>
+              <TouchableOpacity
+                style={[styles.deleteConfirmButton, styles.deleteConfirmCancelButton]}
+                onPress={cancelDeleteComment}
+              >
+                <Text style={styles.deleteConfirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.deleteConfirmButton, styles.deleteConfirmDeleteButton]}
+                onPress={confirmDeleteComment}
               >
                 <Text style={styles.deleteConfirmDeleteText}>Delete</Text>
               </TouchableOpacity>

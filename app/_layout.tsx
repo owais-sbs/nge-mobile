@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, usePathname } from 'expo-router';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -23,6 +23,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname();
+  const router = useRouter();
   const [isAuthed, setIsAuthed] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -42,15 +43,28 @@ export default function RootLayout() {
       try {
         const token = await storage.getToken();
         const user = await storage.getUser();
-        setIsAuthed(Boolean(token && user));
+        const authenticated = Boolean(token && user);
+        setIsAuthed(authenticated);
+        
+        // Redirect logic after auth check
+        if (!authenticated) {
+          // User is not authenticated, redirect to join-community
+          if (pathname !== '/join-community' && pathname !== '/sign-in' && pathname !== '/sign-up') {
+            router.replace('/join-community');
+          }
+        }
       } catch {
         setIsAuthed(false);
+        // Redirect to join-community on auth error
+        if (pathname !== '/join-community' && pathname !== '/sign-in' && pathname !== '/sign-up') {
+          router.replace('/join-community');
+        }
       } finally {
         setAuthChecked(true);
       }
     };
     checkAuth();
-  }, [pathname]);
+  }, [pathname, router]);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -68,7 +82,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <View style={{ flex: 1 }}>
-          <Stack initialRouteName="sign-in">
+          <Stack initialRouteName="join-community">
             {/* <Stack.Screen name="splash" options={{ headerShown: false }} /> */}
             <Stack.Screen name="join-community" options={{ headerShown: false }} />
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />

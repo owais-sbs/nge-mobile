@@ -4,13 +4,13 @@ import axios from "axios";
 import { storage } from "../lib/storage";
 
 const axiosInstance = axios.create({
-  // baseURL: "https://nge.nuzum.tech/api/",
+  baseURL: "https://nge.nuzum.tech/api/",
   // baseURL: "https://unpatted-nancee-headed.ngrok-free.dev/api",
   //  baseURL:"https://f6c7-2401-4900-1cb2-32d4-dd42-955d-34aa-1a94.ngrok-free.app/api",
   //  baseURL:"https://be79-2406-b400-b5-a6c-a9ea-c674-ef7b-5a11.ngrok-free.app/api",
   //  baseURL:"https://hudaapi.nuzum.tech/api"
   // timeout: 5000, // Timeout for requests (optional)
-  baseURL: "https://localhost:7130/api/",
+  // baseURL: "https://localhost:7130/api/",
 });
 
 // Request interceptor to attach token to the headers
