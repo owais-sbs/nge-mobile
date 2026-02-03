@@ -125,3 +125,18 @@ export const updateAccount = async (
     throw error;
   }
 };
+
+export const updateProfile = async (
+  payload: FormData,
+): Promise<ApiResponse<UserData>> => {
+  const { data } = await axiosInstance.post<ApiResponse<UserData>>(
+    "/Account/UpdateProfile/UpdateProfile",
+    payload,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+  return data;
+};

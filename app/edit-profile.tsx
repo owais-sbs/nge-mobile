@@ -1,8 +1,4 @@
-import {
-  getUserById,
-  updateAccount,
-  UpdateAccountRequest,
-} from "@/services/auth";
+import { getUserById, updateProfile } from "@/services/auth";
 import { storage, UserData } from "@/src/lib/storage";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -146,147 +142,52 @@ const EditProfileScreen = (): React.JSX.Element => {
   };
 
   const handleUpdate = async () => {
-    if (!userData || !userData.Id) {
-      Alert.alert("Error", "User data not found");
+    if (!userData?.Id) {
+      Alert.alert("Error", "User not found");
       return;
     }
 
-    if (!formData.Name.trim() || !formData.Email.trim()) {
-      setError("Name and Email are required");
-      return;
-    }
+    const roleIds =
+      userData.RoleMappings?.filter(
+        (r: any) => r.IsActive && r.IsDeleted !== true,
+      ).map((r: any) => r.RoleId) || [];
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.Email.trim())) {
-      setError("Please enter a valid email address");
-      return;
+    const fd = new FormData();
+    fd.append("Id", String(userData.Id));
+    fd.append("Name", formData.Name.trim());
+    fd.append("Email", formData.Email.trim());
+
+    if (formData.Mobile) fd.append("Mobile", formData.Mobile);
+    if (formData.Password) fd.append("Password", formData.Password);
+    if (formData.SafetyNumber) fd.append("SafetyNumber", formData.SafetyNumber);
+
+    roleIds.forEach((id, i) => {
+      fd.append(`RoleIds[${i}]`, String(id));
+    });
+
+    if (profileImage?.startsWith("file://")) {
+      fd.append("ProfileImageFile", {
+        uri: profileImage,
+        name: "profile.jpg",
+        type: "image/jpeg",
+      } as any);
     }
 
     try {
       setSaving(true);
-      setError(null);
+      const response = await updateProfile(fd);
 
-      // Get role IDs from existing user data
-      const roleIds =
-        userData.RoleMappings?.filter(
-          (rm: any) => rm.IsActive && !rm.IsDeleted,
-        ).map((rm: any) => rm.RoleId) || [];
-
-      // Check if we need to upload a new image
-      const hasNewImage =
-        profileImage &&
-        profileImage !== originalProfileImage &&
-        profileImage.startsWith("file://");
-
-      let response;
-
-      if (hasNewImage) {
-        // Use FormData for image upload
-        try {
-          const formDataPayload = new FormData();
-          formDataPayload.append("Id", userData.Id.toString());
-          formDataPayload.append("Name", formData.Name.trim());
-          formDataPayload.append("Email", formData.Email.trim());
-
-          if (formData.Mobile.trim()) {
-            formDataPayload.append("Mobile", formData.Mobile.trim());
-          }
-
-          if (formData.Password.trim()) {
-            formDataPayload.append("Password", formData.Password.trim());
-          }
-
-          if (roleIds.length > 0) {
-            roleIds.forEach((roleId) => {
-              formDataPayload.append("RoleIds", roleId.toString());
-            });
-          }
-
-          if (formData.SafetyNumber.trim()) {
-            formDataPayload.append(
-              "SafetyNumber",
-              formData.SafetyNumber.trim(),
-            );
-          }
-
-          if (userData.CreatedBy) {
-            formDataPayload.append("CreatedBy", userData.CreatedBy);
-          }
-
-          if (userData.Name) {
-            formDataPayload.append("UpdatedBy", userData.Name);
-          }
-
-          // Add the profile image only if it's a local file
-          const fileName = profileImage.split("/").pop() || "profile.jpg";
-          const match = /\.(\w+)$/.exec(fileName);
-          const type = match ? `image/${match[1]}` : "image/jpeg";
-
-          // Create the file object for React Native
-          const imageFile = {
-            uri: profileImage,
-            name: fileName,
-            type: type,
-          };
-
-          formDataPayload.append("ProfileImageFile", imageFile as any);
-
-          response = await updateAccount(formDataPayload);
-        } catch (formDataError) {
-          console.error("FormData creation error:", formDataError);
-          // Fallback to regular update without image
-          setError("Image upload failed. Profile updated without image.");
-          const updatePayload: UpdateAccountRequest = {
-            Id: userData.Id,
-            Name: formData.Name.trim(),
-            Email: formData.Email.trim(),
-            Mobile: formData.Mobile.trim() || undefined,
-            Password: formData.Password.trim() || undefined,
-            RoleIds: roleIds.length > 0 ? roleIds : undefined,
-            SafetyNumber: formData.SafetyNumber.trim()
-              ? parseInt(formData.SafetyNumber.trim(), 10)
-              : undefined,
-            CreatedBy: userData.CreatedBy || undefined,
-            UpdatedBy: userData.Name || undefined,
-          };
-          response = await updateAccount(updatePayload);
+      if (response.IsSuccess) {
+        if (response.Data) {
+          await storage.setUser(response.Data);
         }
+        Alert.alert("Success", "Profile updated successfully");
+        router.back();
       } else {
-        // Use regular JSON payload for updates without image
-        const updatePayload: UpdateAccountRequest = {
-          Id: userData.Id,
-          Name: formData.Name.trim(),
-          Email: formData.Email.trim(),
-          Mobile: formData.Mobile.trim() || undefined,
-          Password: formData.Password.trim() || undefined,
-          RoleIds: roleIds.length > 0 ? roleIds : undefined,
-          SafetyNumber: formData.SafetyNumber.trim()
-            ? parseInt(formData.SafetyNumber.trim(), 10)
-            : undefined,
-          CreatedBy: userData.CreatedBy || undefined,
-          UpdatedBy: userData.Name || undefined,
-        };
-
-        response = await updateAccount(updatePayload);
+        setError(response.Message || "Update failed");
       }
-
-      if (response.IsSuccess && response.Data) {
-        // Update stored user data
-        await storage.setUser(response.Data);
-        Alert.alert("Success", "Profile updated successfully", [
-          { text: "OK", onPress: () => router.back() },
-        ]);
-      } else {
-        setError(response.Message || "Failed to update profile");
-      }
-    } catch (err: any) {
-      console.error("Failed to update profile:", err);
-      const errorMessage =
-        err.response?.data?.Message ||
-        err.message ||
-        "Failed to update profile. Please try again.";
-      setError(errorMessage);
+    } catch (e: any) {
+      setError(e.message || "Something went wrong");
     } finally {
       setSaving(false);
     }
